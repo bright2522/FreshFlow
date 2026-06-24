@@ -168,11 +168,10 @@
                             </div>
                             <div class="form-group">
                                 <label>เลขล็อต (Lot/Batch)</label>
-                                <input type="text" id="scan-lot" list="lot-options" required placeholder="พิมพ์ล็อตใหม่ หรือเลือกล็อตเดิมที่มี" />
-                                <datalist id="lot-options">
-                                    <!-- Populated dynamically based on name -->
-                                </datalist>
-                                <p style="font-size:11px; color:var(--text-muted); margin-top:4px;">*คุณสามารถดับเบิ้ลคลิกหรือพิมพ์เพื่อเลือกล็อตที่มีอยู่แล้วได้</p>
+                                <input type="text" id="scan-lot" required placeholder="พิมพ์เลขล็อตใหม่" />
+                                <div id="lot-chips-container" class="lot-chips-container">
+                                    <!-- Populated dynamically: clickable lot chips -->
+                                </div>
                             </div>
                             <div class="form-group">
                                 <label>วันหมดอายุ (Expiry Date)</label>

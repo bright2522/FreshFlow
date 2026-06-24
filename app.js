@@ -398,18 +398,45 @@ function stopARSimulation() {
 }
 
 function updateLotOptions(productName) {
-    const datalist = document.getElementById('lot-options');
-    datalist.innerHTML = '';
+    const container = document.getElementById('lot-chips-container');
+    container.innerHTML = '';
     
-    // Find distinct lots for this product name
-    const matchingLots = [...new Set(state.inventory
-        .filter(item => item.name.toLowerCase() === productName.toLowerCase())
-        .map(item => item.lot))];
-        
-    matchingLots.forEach(lot => {
-        const option = document.createElement('option');
-        option.value = lot;
-        datalist.appendChild(option);
+    // Find distinct lots for this product name (with extra info)
+    const matchingItems = state.inventory.filter(
+        item => item.name.toLowerCase() === productName.toLowerCase()
+    );
+    
+    // Deduplicate by lot
+    const seenLots = new Set();
+    const uniqueLotItems = matchingItems.filter(item => {
+        if (seenLots.has(item.lot)) return false;
+        seenLots.add(item.lot);
+        return true;
+    });
+    
+    if (uniqueLotItems.length === 0) return;
+    
+    // Add label
+    const label = document.createElement('span');
+    label.className = 'lot-chips-label';
+    label.textContent = 'ล็อตเดิมที่มีอยู่ (กดเพื่อเลือก):';
+    container.appendChild(label);
+    
+    uniqueLotItems.forEach(item => {
+        const chip = document.createElement('span');
+        chip.className = 'lot-chip';
+        chip.innerHTML = `<i class="fa-solid fa-tag"></i> ${item.lot} (${item.qty} ชิ้น | Slot ${item.slot})`;
+        chip.addEventListener('click', () => {
+            // Fill lot, expiry, and slot from existing item
+            document.getElementById('scan-lot').value = item.lot;
+            document.getElementById('scan-expiry').value = item.expiry;
+            document.getElementById('scan-slot').value = item.slot;
+            
+            // Highlight selected chip
+            container.querySelectorAll('.lot-chip').forEach(c => c.classList.remove('selected'));
+            chip.classList.add('selected');
+        });
+        container.appendChild(chip);
     });
 }
 
