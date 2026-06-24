@@ -71,6 +71,7 @@
                         <div class="stat-info">
                             <h3>ปลอดภัย (ชิ้น)</h3>
                             <p class="value" id="stat-green">0</p>
+                            <span class="tag-label tag-green">หมดอายุ > 7 วัน</span>
                         </div>
                     </div>
                     <div class="stat-card stat-warning">
@@ -78,6 +79,7 @@
                         <div class="stat-info">
                             <h3>มีความเสี่ยง (ชิ้น)</h3>
                             <p class="value" id="stat-yellow">0</p>
+                            <span class="tag-label tag-yellow">หมดอายุใน 1-7 วัน</span>
                         </div>
                     </div>
                     <div class="stat-card stat-danger">
@@ -85,6 +87,7 @@
                         <div class="stat-info">
                             <h3>วิกฤต (ชิ้น)</h3>
                             <p class="value" id="stat-red">0</p>
+                            <span class="tag-label tag-red">หมดอายุหรือ < 1 วัน</span>
                         </div>
                     </div>
                     <div class="stat-card stat-info-card">
@@ -165,15 +168,23 @@
                             </div>
                             <div class="form-group">
                                 <label>เลขล็อต (Lot/Batch)</label>
-                                <input type="text" id="scan-lot" required />
+                                <input type="text" id="scan-lot" list="lot-options" required placeholder="พิมพ์ล็อตใหม่ หรือเลือกล็อตเดิมที่มี" />
+                                <datalist id="lot-options">
+                                    <!-- Populated dynamically based on name -->
+                                </datalist>
+                                <p style="font-size:11px; color:var(--text-muted); margin-top:4px;">*คุณสามารถดับเบิ้ลคลิกหรือพิมพ์เพื่อเลือกล็อตที่มีอยู่แล้วได้</p>
                             </div>
                             <div class="form-group">
                                 <label>วันหมดอายุ (Expiry Date)</label>
                                 <input type="date" id="scan-expiry" required />
                             </div>
                             <div class="form-group">
-                                <label>จำนวนที่รับเข้า / เติมสต็อก (ชิ้น)</label>
+                                <label>จำนวนที่รับเข้า (ชิ้น)</label>
                                 <input type="number" id="scan-qty" min="1" value="10" required />
+                            </div>
+                            <div class="form-group">
+                                <label>ช่องจัดเก็บ (Slot / Location)</label>
+                                <input type="text" id="scan-slot" placeholder="เช่น A1, B2" required />
                             </div>
                             <div class="form-actions">
                                 <button type="button" class="btn btn-outline" id="rescan-btn">ถ่ายใหม่</button>
@@ -189,26 +200,33 @@
                 <header class="section-header">
                     <div class="header-title">
                         <h1>คลังสินค้า (สรุปยอดคงเหลือ)</h1>
-                        <p>ตรวจสอบจำนวนสินค้าคงเหลือทั้งหมด และแยกตามล็อตการผลิต</p>
+                        <p>ตรวจสอบจำนวนสินค้า สถานะ และตำแหน่งจัดเก็บ (Slot) ของทุกล็อต</p>
                     </div>
-                    <div class="header-actions">
+                    <div class="header-actions" style="display:flex; gap:10px;">
+                        <div class="search-box">
+                            <i class="fa-solid fa-search search-icon"></i>
+                            <input type="text" id="inventory-search" placeholder="ค้นหาชื่อสินค้า, เลขล็อต, Slot...">
+                        </div>
                         <button class="btn btn-primary" onclick="switchView('inbound')"><i class="fa-solid fa-plus"></i> เติมของเข้าสต็อก</button>
                     </div>
                 </header>
                 <div class="card">
                     <div class="card-body">
                         <div class="table-responsive">
-                            <table class="inventory-table">
+                            <table class="inventory-table new-table-layout">
                                 <thead>
                                     <tr>
+                                        <th>ช่องจัดเก็บ (Slot)</th>
                                         <th>ชื่อสินค้า</th>
-                                        <th>ยอดคงเหลือ (ชิ้น)</th>
-                                        <th>สถานะรวม</th>
+                                        <th>เลขล็อต</th>
+                                        <th>จำนวน (ชิ้น)</th>
+                                        <th>วันหมดอายุ</th>
+                                        <th>สถานะความเสี่ยง</th>
                                         <th>จัดการ</th>
                                     </tr>
                                 </thead>
                                 <tbody id="inventory-list">
-                                    <!-- Populated by JS -->
+                                    <!-- Populated by JS in flat format -->
                                 </tbody>
                             </table>
                         </div>
