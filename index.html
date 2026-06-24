@@ -167,8 +167,8 @@
                                 <input type="text" id="scan-name" required />
                             </div>
                             <div class="form-group">
-                                <label>เลขล็อต (Lot/Batch)</label>
-                                <input type="text" id="scan-lot" required placeholder="พิมพ์เลขล็อตใหม่" />
+                                <label>ล็อต / ช่องจัดเก็บ (Lot / Slot)</label>
+                                <input type="text" id="scan-lot" required placeholder="พิมพ์ล็อตใหม่ เช่น A1, B2-04" />
                                 <div id="lot-chips-container" class="lot-chips-container">
                                     <!-- Populated dynamically: clickable lot chips -->
                                 </div>
@@ -180,10 +180,6 @@
                             <div class="form-group">
                                 <label>จำนวนที่รับเข้า (ชิ้น)</label>
                                 <input type="number" id="scan-qty" min="1" value="10" required />
-                            </div>
-                            <div class="form-group">
-                                <label>ช่องจัดเก็บ (Slot / Location)</label>
-                                <input type="text" id="scan-slot" placeholder="เช่น A1, B2" required />
                             </div>
                             <div class="form-actions">
                                 <button type="button" class="btn btn-outline" id="rescan-btn">ถ่ายใหม่</button>
@@ -215,9 +211,8 @@
                             <table class="inventory-table new-table-layout">
                                 <thead>
                                     <tr>
-                                        <th>ช่องจัดเก็บ (Slot)</th>
+                                        <th>ล็อต / ช่องจัดเก็บ</th>
                                         <th>ชื่อสินค้า</th>
-                                        <th>เลขล็อต</th>
                                         <th>จำนวน (ชิ้น)</th>
                                         <th>วันหมดอายุ</th>
                                         <th>สถานะความเสี่ยง</th>
