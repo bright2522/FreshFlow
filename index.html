@@ -37,7 +37,53 @@
         </div>
     </section>
 
-    <!-- Main App Wrapper -->
+    <!-- Onboarding View (กรอกข้อมูลร้านครั้งแรก) -->
+    <section id="onboarding-view" class="login-container">
+        <div class="login-card onboarding-card">
+            <div class="login-logo">
+                <i class="fa-solid fa-store logo-icon"></i>
+                <h2>ตั้งค่าข้อมูลร้าน</h2>
+            </div>
+            <p class="login-subtitle">ตอบ 3 ข้อสั้นๆ เพื่อให้ AI แนะนำการจัดการสินค้าได้แม่นยำขึ้น</p>
+            <form id="onboarding-form">
+                <div class="form-group">
+                    <label>1. ทำเลร้านอยู่ในพื้นที่ที่มีคนพลุกพล่านไหม?</label>
+                    <div class="choice-grid">
+                        <label class="choice-card" data-v="high">
+                            <input type="radio" name="ob-traffic" value="high" />
+                            <i class="fa-solid fa-people-group"></i>
+                            <span>พลุกพล่านมาก</span>
+                        </label>
+                        <label class="choice-card selected" data-v="medium">
+                            <input type="radio" name="ob-traffic" value="medium" checked />
+                            <i class="fa-solid fa-person-walking"></i>
+                            <span>ปานกลาง</span>
+                        </label>
+                        <label class="choice-card" data-v="low">
+                            <input type="radio" name="ob-traffic" value="low" />
+                            <i class="fa-solid fa-person"></i>
+                            <span>เงียบ/คนน้อย</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>2. คาดว่าขายได้กี่ชิ้นต่อวัน?</label>
+                    <input type="number" id="ob-sales" min="0" placeholder="เช่น 80" />
+                </div>
+                <div class="form-group">
+                    <label>3. ปกติรับสินค้าจากที่ไหนเป็นหลัก?</label>
+                    <select id="ob-supplier" class="select-input">
+                        <option value="ผู้ผลิต/แบรนด์โดยตรง">ผู้ผลิต/แบรนด์โดยตรง</option>
+                        <option value="ตัวแทนจำหน่าย/ยี่ปั๊ว" selected>ตัวแทนจำหน่าย / ยี่ปั๊ว</option>
+                        <option value="ตลาดค้าส่ง">ตลาดค้าส่ง</option>
+                        <option value="ศูนย์กระจายสินค้า">ศูนย์กระจายสินค้า (DC)</option>
+                        <option value="อื่นๆ">อื่นๆ</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">เริ่มใช้งาน</button>
+            </form>
+        </div>
+    </section>
     <div id="app-wrapper" class="hidden">
         <!-- Top App Bar for Desktop & Mobile -->
         <header class="app-header">
@@ -50,6 +96,7 @@
                 <div class="info">
                     <span class="name" id="display-name">แอดมิน</span>
                 </div>
+                <button class="btn-icon" title="แก้ไขข้อมูลร้าน" onclick="openShopSettings()"><i class="fa-solid fa-gear"></i></button>
                 <button id="logout-btn" class="btn-icon" title="ออกจากระบบ"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
             </div>
         </header>
@@ -245,6 +292,90 @@
                 </div>
             </section>
         </main>
+
+        <!-- Edit Inventory Modal -->
+        <div id="edit-modal" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3><i class="fa-solid fa-pen-to-square"></i> แก้ไขข้อมูลสินค้า</h3>
+                    <button type="button" class="modal-close" onclick="closeEditModal()"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <form class="scan-form" id="edit-item-form">
+                    <div class="form-group">
+                        <label>ชื่อสินค้า</label>
+                        <input type="text" id="edit-name" required />
+                    </div>
+                    <div class="form-group">
+                        <label>ล็อต / ช่องจัดเก็บ (Lot / Slot)</label>
+                        <input type="text" id="edit-lot" required placeholder="เช่น A1, B2-04" />
+                        <div id="edit-lot-chips-container" class="lot-chips-container">
+                            <!-- Populated dynamically: clickable lot chips -->
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>วันหมดอายุ (Expiry Date)</label>
+                        <input type="date" id="edit-expiry" required />
+                    </div>
+                    <div class="form-group">
+                        <label>จำนวนคงเหลือ (ชิ้น)</label>
+                        <input type="number" id="edit-qty" min="1" required />
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-outline" onclick="closeEditModal()">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary">บันทึกการแก้ไข</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Action / Disposition Modal -->
+        <div id="action-modal" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3><i class="fa-solid fa-bolt"></i> ดำเนินการกับสินค้า</h3>
+                    <button type="button" class="modal-close" onclick="closeActionModal()"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <form class="scan-form" id="action-form">
+                    <div id="action-item-summary" class="action-item-summary"></div>
+                    <div id="action-ai-rec" class="action-ai-rec"></div>
+
+                    <div class="form-group">
+                        <label>เลือกวิธีดำเนินการ</label>
+                        <div id="action-options" class="action-options"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>จำนวนที่ดำเนินการ (ชิ้น)</label>
+                        <input type="number" id="action-qty" min="1" required />
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-outline" onclick="closeActionModal()">ยกเลิก</button>
+                        <button type="submit" class="btn btn-primary">บันทึกการดำเนินการ</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- AI Assistant: Floating Button + Chat Panel -->
+        <button id="chat-fab" class="chat-fab" title="ผู้ช่วย AI">
+            <i class="fa-solid fa-comment-dots"></i>
+        </button>
+        <div id="chat-panel" class="chat-panel hidden">
+            <div class="chat-header">
+                <div class="chat-title">
+                    <span class="chat-avatar"><i class="fa-solid fa-robot"></i></span>
+                    <div>
+                        <strong>ผู้ช่วย FreshFlow</strong>
+                        <small>ถามเรื่องการจัดการสินค้าได้เลย</small>
+                    </div>
+                </div>
+                <button id="chat-close" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="chat-messages" class="chat-messages"></div>
+            <form id="chat-form" class="chat-input-row">
+                <input type="text" id="chat-input" placeholder="พิมพ์คำถาม เช่น ขนมปังส่งไปไหน" autocomplete="off" />
+                <button type="submit" class="chat-send"><i class="fa-solid fa-paper-plane"></i></button>
+            </form>
+        </div>
 
         <!-- Bottom Navigation Bar -->
         <nav class="bottom-nav">
