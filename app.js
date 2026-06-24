@@ -421,11 +421,11 @@ function resetScannerUI() {
 }
 
 function initScannerLogic() {
-    captureBtn.addEventListener('click', () => {
+    captureBtn.addEventListener('click', async () => {
         // Pause AR immediately
         stopARSimulation();
         
-        captureBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังประมวลผล...';
+        captureBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังเริ่มระบบ AI วิเคราะห์ภาพ...';
         captureBtn.disabled = true;
 
         if(videoEl && videoStream) {
@@ -434,31 +434,76 @@ function initScannerLogic() {
             canvas.getContext('2d').drawImage(videoEl, 0, 0);
             const dataUrl = canvas.toDataURL('image/jpeg');
             preview.style.backgroundImage = `url(${dataUrl})`;
+            
+            try {
+                // Real OCR using Tesseract.js
+                const result = await Tesseract.recognize(
+                    canvas,
+                    'tha+eng',
+                    { 
+                        logger: m => {
+                            if(m.status === 'recognizing text') {
+                                captureBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> AI กำลังอ่านข้อความ ' + Math.round(m.progress * 100) + '%';
+                            } else {
+                                captureBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังโหลดโมเดลภาษา...';
+                            }
+                        }
+                    }
+                );
+                
+                const text = result.data.text;
+                let detectedName = "";
+                let detectedLot = currentARData.lot; 
+                
+                const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+                
+                if (lines.length > 0) {
+                    // Try to find a good line for the name (ignore lines with lots of numbers or dates)
+                    const nameLines = lines.filter(l => !/lot|exp|mfd|bbd|[0-9]{3,}/i.test(l));
+                    if (nameLines.length > 0) {
+                        detectedName = nameLines[0]; 
+                    } else {
+                        detectedName = lines[0]; 
+                    }
+                }
+                
+                if (!detectedName || detectedName.length < 2) {
+                    detectedName = "ไม่สามารถอ่านชื่อได้ (พิมพ์เอง)"; 
+                }
+
+                const lotMatch = text.match(/LOT\s*[:\-]?\s*([A-Z0-9]+)/i);
+                if (lotMatch) detectedLot = lotMatch[1];
+                
+                cameraContainer.classList.add('hidden');
+                scanResults.classList.remove('hidden');
+                
+                document.getElementById('scan-name').value = detectedName;
+                document.getElementById('scan-lot').value = detectedLot;
+                document.getElementById('scan-expiry').value = currentARData.expiry; // Keep fallback expiry to ensure valid date format
+                document.getElementById('scan-qty').value = currentARData.qty;
+                
+                preview.innerHTML = `
+                    <div class="preview-ar-overlay">
+                        <div class="ar-box product" style="top: 30%; left: 10%; max-width:80%; word-break:break-all;"><i class="fa-solid fa-box"></i> ${detectedName}</div>
+                        <div class="ar-box lot" style="top: 50%; left: 20%;"><i class="fa-solid fa-barcode"></i> LOT: ${detectedLot}</div>
+                        <div class="ar-box expiry" style="top: 70%; left: 45%;"><i class="fa-solid fa-calendar-xmark"></i> EXP: ${currentARData.expiry}</div>
+                    </div>
+                `;
+                
+            } catch (err) {
+                console.error(err);
+                alert("เกิดข้อผิดพลาดในการอ่านข้อความด้วย AI จะกลับไปใช้ข้อมูลจำลอง");
+                // Fallback to random AR data if OCR fails
+                cameraContainer.classList.add('hidden');
+                scanResults.classList.remove('hidden');
+                document.getElementById('scan-name').value = currentARData.name;
+                document.getElementById('scan-lot').value = currentARData.lot;
+                document.getElementById('scan-expiry').value = currentARData.expiry;
+                document.getElementById('scan-qty').value = currentARData.qty;
+            }
         } else {
             preview.style.backgroundColor = '#ccc';
         }
-
-        // Fast transition since AR already "detected" the text
-        setTimeout(() => {
-            cameraContainer.classList.add('hidden');
-            scanResults.classList.remove('hidden');
-            
-            // Populate form with the data that was floating in AR
-            document.getElementById('scan-name').value = currentARData.name;
-            document.getElementById('scan-lot').value = currentARData.lot;
-            document.getElementById('scan-expiry').value = currentARData.expiry;
-            document.getElementById('scan-qty').value = currentARData.qty;
-            
-            // Generate a mini AR overlay on top of the static preview image
-            preview.innerHTML = `
-                <div class="preview-ar-overlay">
-                    <div class="ar-box product" style="top: 30%; left: 30%;"><i class="fa-solid fa-box"></i> ${currentARData.name}</div>
-                    <div class="ar-box lot" style="top: 50%; left: 20%;"><i class="fa-solid fa-barcode"></i> LOT: ${currentARData.lot}</div>
-                    <div class="ar-box expiry" style="top: 70%; left: 45%;"><i class="fa-solid fa-calendar-xmark"></i> EXP: ${currentARData.expiry}</div>
-                </div>
-            `;
-            
-        }, 500); // Shorter delay because AR already did the work
     });
 
     rescanBtn.addEventListener('click', () => {
