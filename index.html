@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FreshFlow - ระบบจัดการคลังสินค้า AI</title>
+    <!-- Google Fonts: Noto Sans Thai & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Login View -->
+    <section id="login-view" class="login-container active">
+        <div class="login-card">
+            <div class="login-logo">
+                <i class="fa-solid fa-leaf logo-icon"></i>
+                <h2>FreshFlow</h2>
+            </div>
+            <p class="login-subtitle">เข้าสู่ระบบเพื่อจัดการคลังสินค้า</p>
+            <form id="login-form">
+                <div class="form-group">
+                    <label>ชื่อผู้ใช้งาน</label>
+                    <input type="text" id="username" placeholder="admin" required value="admin">
+                </div>
+                <div class="form-group">
+                    <label>รหัสผ่าน</label>
+                    <input type="password" id="password" placeholder="••••••••" required value="123456">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">เข้าสู่ระบบ</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Main App Wrapper -->
+    <div id="app-wrapper" class="hidden">
+        <!-- Top App Bar for Desktop & Mobile -->
+        <header class="app-header">
+            <div class="logo">
+                <i class="fa-solid fa-leaf logo-icon"></i>
+                <h2>FreshFlow</h2>
+            </div>
+            <div class="user-profile">
+                <div class="avatar">A</div>
+                <div class="info">
+                    <span class="name" id="display-name">แอดมิน</span>
+                </div>
+                <button id="logout-btn" class="btn-icon" title="ออกจากระบบ"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Dashboard View -->
+            <section id="dashboard-view" class="view-section active">
+                <header class="section-header">
+                    <div class="header-title">
+                        <h1>แดชบอร์ดอัจฉริยะ</h1>
+                        <p>ภาพรวมคลังสินค้า พยากรณ์การสั่งซื้อ และกลยุทธ์ระบายสินค้า</p>
+                    </div>
+                </header>
+
+                <div class="stats-grid">
+                    <div class="stat-card stat-success">
+                        <div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div>
+                        <div class="stat-info">
+                            <h3>ปลอดภัย (ชิ้น)</h3>
+                            <p class="value" id="stat-green">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-warning">
+                        <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                        <div class="stat-info">
+                            <h3>มีความเสี่ยง (ชิ้น)</h3>
+                            <p class="value" id="stat-yellow">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-danger">
+                        <div class="stat-icon"><i class="fa-solid fa-circle-xmark"></i></div>
+                        <div class="stat-info">
+                            <h3>วิกฤต (ชิ้น)</h3>
+                            <p class="value" id="stat-red">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-info-card">
+                        <div class="stat-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+                        <div class="stat-info">
+                            <h3>สินค้าทั้งหมด (ชิ้น)</h3>
+                            <p class="value" id="stat-total">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-grid">
+                    <!-- Action Engine Recommendations (Bundling & Clearance) -->
+                    <div class="card recommendations-card">
+                        <div class="card-header">
+                            <h2>AI จัดการสินค้า & จับคู่โปรโมชั่น</h2>
+                            <span class="badge">กลยุทธ์ระบายสินค้า</span>
+                        </div>
+                        <div class="card-body">
+                            <ul class="action-list" id="dashboard-actions-list">
+                                <!-- Populated by JS -->
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Smart Restock Predictions -->
+                    <div class="card restock-card">
+                        <div class="card-header">
+                            <h2>AI แนะนำการสั่งซื้อรอบถัดไป</h2>
+                            <span class="badge bg-blue">พยากรณ์ล่วงหน้า</span>
+                        </div>
+                        <div class="card-body">
+                            <ul class="action-list" id="dashboard-restock-list">
+                                <!-- Populated by JS -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Inbound Scan View -->
+            <section id="inbound-view" class="view-section">
+                <header class="section-header">
+                    <div class="header-title">
+                        <h1>สแกนเติมสต็อก / รับเข้าสินค้า</h1>
+                        <p>ใช้กล้องถ่ายรูปฉลากสินค้า AI จะดึงข้อมูล Lot และวันหมดอายุอัตโนมัติ</p>
+                    </div>
+                </header>
+
+                <div class="scanner-container">
+                    <div class="camera-placeholder" id="camera-container">
+                        <video id="camera-feed" autoplay playsinline></video>
+                        <canvas id="snapshot-canvas" class="hidden"></canvas>
+                        
+                        <div class="scan-frame" id="scan-frame-ui">
+                            <div class="corner top-left"></div>
+                            <div class="corner top-right"></div>
+                            <div class="corner bottom-left"></div>
+                            <div class="corner bottom-right"></div>
+                            <div class="scan-line" id="scan-line-ui"></div>
+                        </div>
+                        
+                        <div class="camera-controls">
+                            <button class="btn btn-primary scan-btn" id="capture-btn"><i class="fa-solid fa-camera"></i> ถ่ายรูป / สแกน</button>
+                        </div>
+                    </div>
+
+                    <div class="scan-results hidden" id="scan-results">
+                        <h3>ข้อมูลที่ AI อ่านได้จากภาพ</h3>
+                        <div id="captured-image-preview" class="image-preview"></div>
+                        <form class="scan-form" id="save-item-form">
+                            <div class="form-group">
+                                <label>ชื่อสินค้า</label>
+                                <input type="text" id="scan-name" required />
+                            </div>
+                            <div class="form-group">
+                                <label>เลขล็อต (Lot/Batch)</label>
+                                <input type="text" id="scan-lot" required />
+                            </div>
+                            <div class="form-group">
+                                <label>วันหมดอายุ (Expiry Date)</label>
+                                <input type="date" id="scan-expiry" required />
+                            </div>
+                            <div class="form-group">
+                                <label>จำนวนที่รับเข้า / เติมสต็อก (ชิ้น)</label>
+                                <input type="number" id="scan-qty" min="1" value="10" required />
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-outline" id="rescan-btn">ถ่ายใหม่</button>
+                                <button type="submit" class="btn btn-primary">ยืนยันและเพิ่มเข้าคลัง</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Inventory View -->
+            <section id="inventory-view" class="view-section">
+                <header class="section-header">
+                    <div class="header-title">
+                        <h1>คลังสินค้า (สรุปยอดคงเหลือ)</h1>
+                        <p>ตรวจสอบจำนวนสินค้าคงเหลือทั้งหมด และแยกตามล็อตการผลิต</p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="btn btn-primary" onclick="switchView('inbound')"><i class="fa-solid fa-plus"></i> เติมของเข้าสต็อก</button>
+                    </div>
+                </header>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="inventory-table">
+                                <thead>
+                                    <tr>
+                                        <th>ชื่อสินค้า</th>
+                                        <th>ยอดคงเหลือ (ชิ้น)</th>
+                                        <th>สถานะรวม</th>
+                                        <th>จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventory-list">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Actions View -->
+            <section id="actions-view" class="view-section">
+                <header class="section-header">
+                    <div class="header-title">
+                        <h1>ประวัติการดำเนินการ</h1>
+                        <p>ประวัติกลยุทธ์ระบายสินค้า การสั่งซื้อ และการเติมสต็อก</p>
+                    </div>
+                </header>
+                <div class="card">
+                    <div class="card-body">
+                        <ul class="history-list" id="history-list">
+                            <!-- Populated by JS -->
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Bottom Navigation Bar -->
+        <nav class="bottom-nav">
+            <ul class="nav-links">
+                <li class="active" data-view="dashboard">
+                    <i class="fa-solid fa-chart-pie nav-icon"></i>
+                    <span class="nav-text">แดชบอร์ด</span>
+                </li>
+                <li data-view="inbound">
+                    <i class="fa-solid fa-camera nav-icon"></i>
+                    <span class="nav-text">สแกนรับเข้า</span>
+                </li>
+                <li data-view="inventory">
+                    <i class="fa-solid fa-boxes-stacked nav-icon"></i>
+                    <span class="nav-text">คลังสินค้า</span>
+                </li>
+                <li data-view="actions">
+                    <i class="fa-solid fa-clock-rotate-left nav-icon"></i>
+                    <span class="nav-text">ประวัติ</span>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
