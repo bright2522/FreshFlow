@@ -1,12 +1,13 @@
 // App State
 const state = {
     inventory: [
-        { id: 1, name: 'ขนมปังฟาร์มเฮ้าส์', lot: 'B-772', expiry: '2026-06-26', qty: 45, status: 'red', slot: 'A1-01' },
-        { id: 2, name: 'นมสดพาสเจอร์ไรส์ 1 ลิตร', lot: 'L-88392', expiry: '2026-07-05', qty: 50, status: 'green', slot: 'B2-04' },
-        { id: 3, name: 'นมสดพาสเจอร์ไรส์ 1 ลิตร', lot: 'L-88395', expiry: '2026-06-25', qty: 20, status: 'red', slot: 'B2-04' },
-        { id: 4, name: 'น้ำส้มคั้น 100%', lot: 'J-992', expiry: '2026-06-30', qty: 30, status: 'yellow', slot: 'C3-11' },
-        { id: 5, name: 'แยมสตรอว์เบอร์รี', lot: 'J-110', expiry: '2027-01-10', qty: 150, status: 'green', slot: 'D1-02' }
+        { id: 1, name: 'ขนมปังฟาร์มเฮ้าส์', lot: 'A1-01', expiry: '2026-06-26', qty: 45, status: 'red', slot: 'A1-01' },
+        { id: 2, name: 'นมสดพาสเจอร์ไรส์ 1 ลิตร', lot: 'B2-04', expiry: '2026-07-05', qty: 50, status: 'green', slot: 'B2-04' },
+        { id: 3, name: 'นมสดพาสเจอร์ไรส์ 1 ลิตร', lot: 'B2-04', expiry: '2026-06-25', qty: 20, status: 'red', slot: 'B2-04' },
+        { id: 4, name: 'น้ำส้มคั้น 100%', lot: 'C3-11', expiry: '2026-06-30', qty: 30, status: 'yellow', slot: 'C3-11' },
+        { id: 5, name: 'แยมสตรอว์เบอร์รี', lot: 'D1-02', expiry: '2027-01-10', qty: 150, status: 'green', slot: 'D1-02' }
     ],
+    knownLots: [],
     history: [
         { text: 'ส่งบริจาค โยเกิร์ต (Lot C-101) จำนวน 15 ชิ้น', date: new Date(Date.now() - 3600000).toLocaleString('th-TH') },
         { text: 'ลดราคา 20% นมสด (Lot L-88390) จำนวน 40 ชิ้น', date: new Date(Date.now() - 86400000).toLocaleString('th-TH') }
@@ -39,6 +40,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initApp() {
+    state.knownLots = loadKnownLots();
+
     if(localStorage.getItem('freshflow_logged_in') === 'true') {
         showMainApp();
     }
@@ -67,11 +70,6 @@ function initApp() {
 
     searchInput.addEventListener('input', () => {
         renderInventory(searchInput.value);
-    });
-
-    // Populate Datalist when scan name changes
-    document.getElementById('scan-name').addEventListener('input', (e) => {
-        updateLotOptions(e.target.value);
     });
 
     initScannerLogic();
@@ -250,12 +248,12 @@ function renderInventory(searchQuery = '') {
 
     filtered.forEach(item => {
         let statusText = item.status === 'green' ? 'ปลอดภัย' : item.status === 'yellow' ? 'เสี่ยง' : 'วิกฤต';
+        const lotValue = item.slot || item.lot || 'ไม่ได้ระบุ';
         
         list.innerHTML += `
             <tr>
-                <td><span class="slot-badge">${item.slot || 'ไม่ได้ระบุ'}</span></td>
+                <td><span class="slot-badge">${lotValue}</span></td>
                 <td style="font-weight:600; color:var(--text-main);">${item.name}</td>
-                <td><span style="color:var(--text-muted);">${item.lot}</span></td>
                 <td style="font-weight:700; color:var(--primary-color);">${item.qty.toLocaleString()}</td>
                 <td style="color:var(--text-muted); font-size:13px;">${item.expiry}</td>
                 <td><span class="badge" style="background: var(--${item.status === 'green' ? 'success' : item.status === 'yellow' ? 'warning' : 'danger'}-color); padding: 4px 12px;">${statusText}</span></td>
@@ -267,7 +265,7 @@ function renderInventory(searchQuery = '') {
     });
 
     if(filtered.length === 0) {
-        list.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 30px; color:var(--text-muted);">ไม่พบสินค้า "${searchQuery}" ในคลัง</td></tr>`;
+        list.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 30px; color:var(--text-muted);">ไม่พบสินค้า "${searchQuery}" ในคลัง</td></tr>`;
     }
 }
 
@@ -397,42 +395,55 @@ function stopARSimulation() {
     if(arOverlay) arOverlay.innerHTML = '';
 }
 
-function updateLotOptions(productName) {
+// --- KNOWN LOTS (saved in the system & reusable) ---
+function loadKnownLots() {
+    let stored = [];
+    try {
+        stored = JSON.parse(localStorage.getItem('freshflow_lots') || '[]');
+    } catch (e) {
+        stored = [];
+    }
+    const fromInventory = state.inventory
+        .map(i => i.slot || i.lot)
+        .filter(Boolean);
+    // Merge & dedupe, keep order stable
+    return [...new Set([...stored, ...fromInventory])];
+}
+
+function saveKnownLot(lot) {
+    if (!lot) return;
+    if (!state.knownLots.includes(lot)) {
+        state.knownLots.push(lot);
+    }
+    localStorage.setItem('freshflow_lots', JSON.stringify(state.knownLots));
+}
+
+// Show ALL saved lots as clickable chips (independent of product)
+function renderLotChips() {
     const container = document.getElementById('lot-chips-container');
+    if (!container) return;
     container.innerHTML = '';
-    
-    // Find distinct lots for this product name (with extra info)
-    const matchingItems = state.inventory.filter(
-        item => item.name.toLowerCase() === productName.toLowerCase()
-    );
-    
-    // Deduplicate by lot
-    const seenLots = new Set();
-    const uniqueLotItems = matchingItems.filter(item => {
-        if (seenLots.has(item.lot)) return false;
-        seenLots.add(item.lot);
-        return true;
-    });
-    
-    if (uniqueLotItems.length === 0) return;
-    
-    // Add label
+
+    const lots = [...state.knownLots].sort((a, b) => a.localeCompare(b));
+    if (lots.length === 0) return;
+
     const label = document.createElement('span');
     label.className = 'lot-chips-label';
-    label.textContent = 'ล็อตเดิมที่มีอยู่ (กดเพื่อเลือก):';
+    label.textContent = 'ล็อตที่เคยใช้ (กดเพื่อเลือก):';
     container.appendChild(label);
-    
-    uniqueLotItems.forEach(item => {
+
+    lots.forEach(lot => {
+        const occupants = state.inventory.filter(i => (i.slot || i.lot) === lot);
+        const totalQty = occupants.reduce((s, i) => s + i.qty, 0);
+        const info = occupants.length
+            ? ` · ${occupants.length} รายการ (${totalQty} ชิ้น)`
+            : ' · ว่าง';
+
         const chip = document.createElement('span');
         chip.className = 'lot-chip';
-        chip.innerHTML = `<i class="fa-solid fa-tag"></i> ${item.lot} (${item.qty} ชิ้น | Slot ${item.slot})`;
+        chip.innerHTML = `<i class="fa-solid fa-warehouse"></i> ${lot}<small style="opacity:.65; font-weight:400;">${info}</small>`;
         chip.addEventListener('click', () => {
-            // Fill lot, expiry, and slot from existing item
-            document.getElementById('scan-lot').value = item.lot;
-            document.getElementById('scan-expiry').value = item.expiry;
-            document.getElementById('scan-slot').value = item.slot;
-            
-            // Highlight selected chip
+            document.getElementById('scan-lot').value = lot;
             container.querySelectorAll('.lot-chip').forEach(c => c.classList.remove('selected'));
             chip.classList.add('selected');
         });
@@ -512,7 +523,7 @@ function initScannerLogic() {
                 document.getElementById('scan-qty').value = currentARData.qty;
                 
                 // Populate lot datalist based on detected name
-                updateLotOptions(detectedName);
+                renderLotChips();
                 
                 preview.innerHTML = `
                     <div class="preview-ar-overlay">
@@ -531,7 +542,7 @@ function initScannerLogic() {
                 document.getElementById('scan-lot').value = currentARData.lot;
                 document.getElementById('scan-expiry').value = currentARData.expiry;
                 document.getElementById('scan-qty').value = currentARData.qty;
-                updateLotOptions(currentARData.name);
+                renderLotChips();
             }
         } else {
             preview.style.backgroundColor = '#ccc';
@@ -547,10 +558,10 @@ function initScannerLogic() {
         e.preventDefault();
         
         const name = document.getElementById('scan-name').value;
-        const lot = document.getElementById('scan-lot').value;
+        const lot = document.getElementById('scan-lot').value.trim();
         const expiry = document.getElementById('scan-expiry').value;
         const qty = parseInt(document.getElementById('scan-qty').value, 10);
-        const slot = document.getElementById('scan-slot').value;
+        const slot = lot; // ล็อต และ ช่องจัดเก็บ เป็นอันเดียวกัน
         
         const diffTime = new Date(expiry) - new Date();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -559,8 +570,11 @@ function initScannerLogic() {
         if(diffDays <= 0) status = 'red';
         else if (diffDays <= 7) status = 'yellow';
 
-        // Check if same lot and slot already exists
-        const existingItemIndex = state.inventory.findIndex(i => i.name === name && i.lot === lot && i.slot === slot && i.expiry === expiry);
+        // Save the lot so it can be reused next time
+        saveKnownLot(lot);
+
+        // Merge if same product + lot + expiry already in this lot
+        const existingItemIndex = state.inventory.findIndex(i => i.name === name && i.lot === lot && i.expiry === expiry);
         
         if (existingItemIndex > -1) {
             // Update existing
@@ -580,11 +594,11 @@ function initScannerLogic() {
         }
         
         state.history.unshift({
-            text: `เติมสต็อก: ${name} (Lot ${lot}) จำนวน ${qty} ชิ้น เก็บไว้ที่ช่อง ${slot}`,
+            text: `เติมสต็อก: ${name} (ล็อต ${lot}) จำนวน ${qty} ชิ้น`,
             date: new Date().toLocaleString('th-TH')
         });
 
-        alert(`นำ ${name} เข้าสู่ช่องเก็บ ${slot} เรียบร้อยแล้ว!`);
+        alert(`นำ ${name} เข้าล็อต ${lot} เรียบร้อยแล้ว!`);
         saveForm.reset();
         preview.innerHTML = '';
         switchView('inventory');
