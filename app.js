@@ -8,6 +8,9 @@ const state = {
         { id: 5, name: 'แยมสตรอว์เบอร์รี', lot: 'D1-02', expiry: '2027-01-10', qty: 150, status: 'green', slot: 'D1-02' }
     ],
     knownLots: [],
+    profile: null,        // ข้อมูลร้าน (จากตอน Login)
+    actions: [],          // บันทึกการดำเนินการแบบละเอียด
+    chat: [],             // ประวัติแชทกับผู้ช่วย AI
     history: [
         { text: 'ส่งบริจาค โยเกิร์ต (Lot C-101) จำนวน 15 ชิ้น', date: new Date(Date.now() - 3600000).toLocaleString('th-TH') },
         { text: 'ลดราคา 20% นมสด (Lot L-88390) จำนวน 40 ชิ้น', date: new Date(Date.now() - 86400000).toLocaleString('th-TH') }
@@ -28,6 +31,137 @@ const state = {
     ]
 };
 
+// --- DISPOSITION KNOWLEDGE BASE (ใช้เป็นสมองของผู้ช่วย AI) ---
+const DISPOSITION_INFO = {
+    discount: {
+        label: 'ลดราคา / ป้ายเหลือง',
+        icon: 'fa-tags',
+        color: 'var(--warning-color)',
+        channel: 'หน้าร้าน + ระบบ POS (โซนสินค้าใกล้หมดอายุ)',
+        steps: [
+            'ตั้งราคาลด 20–50% ตามจำนวนวันที่เหลือก่อนหมดอายุ',
+            'ติดป้าย "ใกล้หมดอายุ ลดพิเศษ" และอัปเดตราคาในระบบ POS',
+            'ย้ายสินค้ามาวางโซนหน้าร้าน/จุดที่ลูกค้าเห็นง่าย',
+            'ติดตามยอดทุกวัน ถ้าใกล้หมดอายุแล้วยังไม่ออก ให้เปลี่ยนไปบริจาคแทน'
+        ]
+    },
+    bundle: {
+        label: 'จับคู่โปรโมชั่น (Cross-sell)',
+        icon: 'fa-wand-magic-sparkles',
+        color: 'var(--purple-color)',
+        channel: 'หน้าร้าน + ระบบ POS (โปรโมชั่นจับคู่)',
+        steps: [
+            'เลือกสินค้าขายดีมาจับคู่กับสินค้าที่ใกล้หมดอายุ',
+            'ตั้งเงื่อนไข เช่น "ซื้อ A รับสิทธิ์ซื้อ B ลด 30%"',
+            'ตั้งค่าโปรโมชั่นในระบบ POS และแจ้งพนักงานหน้าร้าน',
+            'ติดตามอัตราการระบายของสินค้าที่จับคู่'
+        ]
+    },
+    donate: {
+        label: 'บริจาค',
+        icon: 'fa-hand-holding-heart',
+        color: 'var(--success-color)',
+        channel: 'ธนาคารอาหาร เช่น SOS Thailand (Scholars of Sustenance), มูลนิธิ/วัด/ชุมชนใกล้เคียง',
+        steps: [
+            'คัดเฉพาะสินค้าที่ยัง "ปลอดภัยต่อการบริโภค" (ยังไม่หมดอายุ/ไม่เสียหาย)',
+            'แพ็คแยกตามประเภทและจดบันทึกจำนวน + เลขล็อต',
+            'ติดต่อองค์กรรับบริจาคเพื่อนัดวันรับของ',
+            'ขอใบรับบริจาคไว้เป็นหลักฐาน (ใช้ลดหย่อนภาษีได้)'
+        ]
+    },
+    return: {
+        label: 'ส่งคืนผู้ผลิต / ตัวแทน',
+        icon: 'fa-truck-ramp-box',
+        color: 'var(--primary-color)',
+        channel: 'ซัพพลายเออร์ที่รับสินค้าเข้ามา',
+        steps: [
+            'ตรวจสอบเงื่อนไขการรับคืน (บางเจ้ารับคืนสินค้าใกล้หมดอายุ)',
+            'รวบรวมเอกสาร: เลขล็อต วันหมดอายุ จำนวน และใบรับสินค้า',
+            'แจ้งตัวแทน/ฝ่ายขายเพื่อเปิดเรื่องขอคืนหรือเปลี่ยนสินค้า',
+            'ขอใบลดหนี้ (credit note) หรือสินค้าทดแทน'
+        ]
+    },
+    transfer: {
+        label: 'โอนไปสาขา/จุดอื่น',
+        icon: 'fa-arrows-turn-right',
+        color: 'var(--primary-color)',
+        channel: 'สาขาอื่นที่มีดีมานด์สูงกว่า',
+        steps: [
+            'เช็กว่าสาขา/จุดขายอื่นยังต้องการสินค้านี้และขายทันก่อนหมดอายุ',
+            'จัดทำเอกสารโอนย้ายระบุล็อตและจำนวน',
+            'จัดส่งโดยรักษาอุณหภูมิ/สภาพสินค้าให้เหมาะสม',
+            'อัปเดตสต็อกทั้งสองฝั่งให้ตรงกัน'
+        ]
+    },
+    dispose: {
+        label: 'ทำลาย / ทิ้ง',
+        icon: 'fa-trash-can',
+        color: 'var(--danger-color)',
+        channel: 'จุดทิ้งขยะตามประเภท (ขยะอินทรีย์ / ขยะอันตราย ตามชนิดสินค้า)',
+        steps: [
+            'ใช้กับสินค้าที่หมดอายุแล้วหรือไม่ปลอดภัยต่อการบริโภค/บริจาคเท่านั้น',
+            'ถ่ายรูปสินค้าก่อนทิ้งเพื่อเป็นหลักฐานการตัดสต็อก',
+            'แยกทิ้งตามประเภทขยะ (อาหาร = ขยะอินทรีย์, ยา/เคมี = ขยะอันตราย)',
+            'บันทึกตัดจำหน่ายออกจากสต็อกในระบบ'
+        ]
+    }
+};
+
+// แนะนำวิธีดำเนินการที่เหมาะสมที่สุด โดยดูจากสถานะสินค้า + ข้อมูลร้าน
+function recommendDisposition(item) {
+    const p = state.profile || {};
+    if (item.status === 'red') {
+        const diffDays = Math.ceil((new Date(item.expiry) - new Date()) / (1000 * 60 * 60 * 24));
+        if (diffDays >= 0) {
+            return { key: 'donate', reason: 'ใกล้หมดอายุมาก (ขายไม่ทันแล้ว) แต่ยังปลอดภัย จึงควรบริจาคเพื่อไม่ให้เสียเปล่า' };
+        }
+        return { key: 'dispose', reason: 'สินค้าหมดอายุแล้ว ไม่ปลอดภัยต่อการบริโภค ต้องตัดออกจากสต็อก' };
+    }
+    if (item.status === 'yellow') {
+        if (p.traffic === 'high' || (p.dailySales && p.dailySales >= 50)) {
+            return { key: 'discount', reason: 'ทำเลคนพลุกพล่าน/ยอดขายสูง มีโอกาสระบายทันด้วยการลดราคา' };
+        }
+        if (p.supplier && (p.supplier.includes('ตัวแทน') || p.supplier.includes('ผู้ผลิต'))) {
+            return { key: 'return', reason: 'ยอดขายไม่สูงพอจะระบายทัน ลองส่งคืนซัพพลายเออร์ก่อนเพื่อลดความเสียหาย' };
+        }
+        return { key: 'discount', reason: 'ยังพอมีเวลา แนะนำลดราคาเพื่อเร่งระบายก่อนเข้าจุดวิกฤต' };
+    }
+    return { key: 'discount', reason: 'สินค้ายังปลอดภัย ยังไม่ต้องเร่งดำเนินการ' };
+}
+
+// --- PROFILE (ข้อมูลร้าน) ---
+const TRAFFIC_LABEL = { high: 'พลุกพล่านมาก', medium: 'ปานกลาง', low: 'เงียบ/คนน้อย' };
+
+function loadProfile() {
+    try {
+        return JSON.parse(localStorage.getItem('freshflow_profile') || 'null');
+    } catch (e) {
+        return null;
+    }
+}
+function saveProfile(profile) {
+    state.profile = profile;
+    localStorage.setItem('freshflow_profile', JSON.stringify(profile));
+}
+
+// --- ACTIONS (บันทึกการดำเนินการ) ---
+function loadActions() {
+    try { state.actions = JSON.parse(localStorage.getItem('freshflow_actions') || '[]'); }
+    catch (e) { state.actions = []; }
+}
+function persistActions() {
+    localStorage.setItem('freshflow_actions', JSON.stringify(state.actions));
+}
+
+// --- CHAT (ผู้ช่วย AI) ---
+function loadChat() {
+    try { state.chat = JSON.parse(localStorage.getItem('freshflow_chat') || '[]'); }
+    catch (e) { state.chat = []; }
+}
+function persistChat() {
+    localStorage.setItem('freshflow_chat', JSON.stringify(state.chat));
+}
+
 // DOM Elements
 const views = document.querySelectorAll('.view-section');
 const navLinks = document.querySelectorAll('.nav-links li');
@@ -41,9 +175,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function initApp() {
     state.knownLots = loadKnownLots();
+    state.profile = loadProfile();
+    loadActions();
+    loadChat();
 
     if(localStorage.getItem('freshflow_logged_in') === 'true') {
-        showMainApp();
+        enterApp();
     }
 
     loginForm.addEventListener('submit', (e) => {
@@ -51,13 +188,15 @@ function initApp() {
         localStorage.setItem('freshflow_logged_in', 'true');
         const username = document.getElementById('username').value;
         document.getElementById('display-name').textContent = username;
-        showMainApp();
+        enterApp();
     });
 
     logoutBtn.addEventListener('click', () => {
         localStorage.removeItem('freshflow_logged_in');
         document.getElementById('app-wrapper').classList.add('hidden');
+        document.getElementById('onboarding-view').classList.remove('active');
         document.getElementById('login-view').classList.add('active');
+        closeChat();
         stopCamera();
     });
 
@@ -73,15 +212,76 @@ function initApp() {
     });
 
     initScannerLogic();
+    initEditModal();
+    initOnboarding();
+    initActionModal();
+    initChat();
     renderDashboard();
     renderInventory();
     renderHistory();
 }
 
+// เข้าแอป: ถ้ายังไม่เคยกรอกข้อมูลร้าน ให้ไปหน้า onboarding ก่อน
+function enterApp() {
+    document.getElementById('login-view').classList.remove('active');
+    if (!state.profile) {
+        showOnboarding();
+    } else {
+        showMainApp();
+    }
+}
+
 function showMainApp() {
     document.getElementById('login-view').classList.remove('active');
+    document.getElementById('onboarding-view').classList.remove('active');
     document.getElementById('app-wrapper').classList.remove('hidden');
     switchView('dashboard');
+}
+
+// --- ONBOARDING (กรอกข้อมูลร้านตอนเข้าใช้ครั้งแรก) ---
+function showOnboarding() {
+    // เติมค่าเดิมถ้ามี (กรณีเปิดมาแก้ไข)
+    const p = state.profile;
+    if (p) {
+        const t = document.querySelector(`input[name="ob-traffic"][value="${p.traffic}"]`);
+        if (t) t.checked = true;
+        document.getElementById('ob-sales').value = p.dailySales || '';
+        document.getElementById('ob-supplier').value = p.supplier || '';
+    }
+    document.getElementById('app-wrapper').classList.add('hidden');
+    document.getElementById('onboarding-view').classList.add('active');
+}
+
+function initOnboarding() {
+    const form = document.getElementById('onboarding-form');
+    if (!form) return;
+
+    // ปุ่มเลือกทำเล (radio cards)
+    form.querySelectorAll('.choice-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const input = card.querySelector('input');
+            if (input) input.checked = true;
+            form.querySelectorAll('.choice-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+        });
+    });
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const trafficEl = form.querySelector('input[name="ob-traffic"]:checked');
+        const traffic = trafficEl ? trafficEl.value : 'medium';
+        const dailySales = parseInt(document.getElementById('ob-sales').value, 10) || 0;
+        const supplier = document.getElementById('ob-supplier').value;
+
+        saveProfile({ traffic, dailySales, supplier });
+        showMainApp();
+        renderDashboard();
+    });
+}
+
+// เปิดหน้าแก้ไขข้อมูลร้านอีกครั้ง (จากปุ่มตั้งค่าบน header)
+window.openShopSettings = function() {
+    showOnboarding();
 }
 
 window.switchView = function(viewId) {
@@ -169,7 +369,7 @@ function renderDashboard() {
                         </div>
                     </div>
                 </div>
-                <button class="btn btn-outline" onclick="takeAction(${item.id}, '${btnText}')">${btnText}</button>
+                <button class="btn btn-outline" onclick="openActionModal(${item.id})">${btnText}</button>
             </li>
         `;
     });
@@ -257,8 +457,9 @@ function renderInventory(searchQuery = '') {
                 <td style="font-weight:700; color:var(--primary-color);">${item.qty.toLocaleString()}</td>
                 <td style="color:var(--text-muted); font-size:13px;">${item.expiry}</td>
                 <td><span class="badge" style="background: var(--${item.status === 'green' ? 'success' : item.status === 'yellow' ? 'warning' : 'danger'}-color); padding: 4px 12px;">${statusText}</span></td>
-                <td>
-                    <button class="btn btn-outline" style="padding: 4px 10px; font-size:12px;" onclick="takeAction(${item.id}, 'นำสินค้าออก')"><i class="fa-solid fa-box-open"></i> นำออก</button>
+                <td style="white-space:nowrap;">
+                    <button class="btn btn-primary" style="padding: 5px 12px; font-size:12px; margin-right:6px;" onclick="openActionModal(${item.id})"><i class="fa-solid fa-bolt"></i> ดำเนินการ</button>
+                    <button class="btn btn-outline" style="padding: 5px 10px; font-size:12px;" onclick="openEditModal(${item.id})"><i class="fa-solid fa-pen"></i> แก้ไข</button>
                 </td>
             </tr>
         `;
@@ -272,17 +473,52 @@ function renderInventory(searchQuery = '') {
 function renderHistory() {
     const list = document.getElementById('history-list');
     list.innerHTML = '';
-    if(state.history.length === 0) {
-        list.innerHTML = '<li style="text-align:center; padding:20px;">ไม่มีประวัติการดำเนินการ</li>';
+
+    const hasActions = state.actions.length > 0;
+    const hasHistory = state.history.length > 0;
+
+    if (!hasActions && !hasHistory) {
+        list.innerHTML = '<li style="text-align:center; padding:30px; color:var(--text-muted);">ยังไม่มีรายการดำเนินการ</li>';
         return;
     }
+
+    // 1) บันทึกการดำเนินการแบบละเอียด (มีสถานะ + ถาม AI ได้)
+    state.actions.forEach(act => {
+        const info = DISPOSITION_INFO[act.disposition] || {};
+        const done = act.status === 'done';
+        const statusPill = done
+            ? '<span class="op-pill op-done"><i class="fa-solid fa-circle-check"></i> เสร็จสิ้น</span>'
+            : '<span class="op-pill op-pending"><i class="fa-solid fa-hourglass-half"></i> รอดำเนินการ</span>';
+
+        list.innerHTML += `
+            <li class="op-card">
+                <div class="op-card-top">
+                    <div class="op-icon" style="background:${hexTint(info.color)}; color:${info.color || 'var(--primary-color)'};">
+                        <i class="fa-solid ${info.icon || 'fa-bolt'}"></i>
+                    </div>
+                    <div style="flex:1;">
+                        <h4>${info.label || 'ดำเนินการ'} · ${act.productName}</h4>
+                        <p class="op-meta">ล็อต ${act.lot} · ${act.qty} ชิ้น · ${act.createdAt}</p>
+                    </div>
+                    ${statusPill}
+                </div>
+                <div class="op-channel"><i class="fa-solid fa-location-arrow"></i> ส่งไปที่: <strong>${info.channel || '-'}</strong></div>
+                <div class="op-card-actions">
+                    <button class="btn btn-action" onclick="askAboutAction('${act.id}')"><i class="fa-solid fa-comments"></i> ถาม AI</button>
+                    ${done ? '' : `<button class="btn btn-outline" style="padding:6px 14px; font-size:13px;" onclick="markActionDone('${act.id}')"><i class="fa-solid fa-check"></i> ทำเสร็จแล้ว</button>`}
+                </div>
+            </li>
+        `;
+    });
+
+    // 2) ประวัติย่อแบบเดิม
     state.history.forEach(h => {
         list.innerHTML += `
             <li class="history-item">
                 <div class="action-details">
                     <span class="dot dot-success"></span>
                     <div>
-                        <h4>${h.text}</h4>
+                        <h4 style="font-weight:500;">${h.text}</h4>
                         <p>${h.date}</p>
                     </div>
                 </div>
@@ -291,19 +527,382 @@ function renderHistory() {
     });
 }
 
-window.takeAction = function(id, actionText) {
-    const itemIndex = state.inventory.findIndex(i => i.id === id);
-    if(itemIndex > -1) {
-        const item = state.inventory[itemIndex];
+// แปลงสี var(--x) เป็นพื้นหลังจางๆ (ใช้ค่าคงที่ map)
+function hexTint(color) {
+    const map = {
+        'var(--warning-color)': '#fef3c7',
+        'var(--purple-color)': '#ede9fe',
+        'var(--success-color)': '#d1fae5',
+        'var(--primary-color)': '#dbeafe',
+        'var(--danger-color)': '#fee2e2'
+    };
+    return map[color] || '#dbeafe';
+}
+
+window.markActionDone = function(actionId) {
+    const act = state.actions.find(a => a.id === actionId);
+    if (act) {
+        act.status = 'done';
+        persistActions();
+        renderHistory();
+    }
+}
+
+// --- EDIT INVENTORY ITEM ---
+let editingItemId = null;
+
+function computeStatus(expiry) {
+    const diffDays = Math.ceil((new Date(expiry) - new Date()) / (1000 * 60 * 60 * 24));
+    if (diffDays <= 0) return 'red';
+    if (diffDays <= 7) return 'yellow';
+    return 'green';
+}
+
+window.openEditModal = function(id) {
+    const item = state.inventory.find(i => i.id === id);
+    if (!item) return;
+    editingItemId = id;
+
+    document.getElementById('edit-name').value = item.name;
+    document.getElementById('edit-lot').value = item.slot || item.lot || '';
+    document.getElementById('edit-expiry').value = item.expiry;
+    document.getElementById('edit-qty').value = item.qty;
+
+    renderLotChips('edit-lot-chips-container', 'edit-lot');
+
+    document.getElementById('edit-modal').classList.remove('hidden');
+}
+
+window.closeEditModal = function() {
+    editingItemId = null;
+    document.getElementById('edit-modal').classList.add('hidden');
+}
+
+function initEditModal() {
+    const form = document.getElementById('edit-item-form');
+    if (!form) return;
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const item = state.inventory.find(i => i.id === editingItemId);
+        if (!item) return;
+
+        const name = document.getElementById('edit-name').value.trim();
+        const lot = document.getElementById('edit-lot').value.trim();
+        const expiry = document.getElementById('edit-expiry').value;
+        const qty = parseInt(document.getElementById('edit-qty').value, 10);
+
+        if (!name || !lot || !expiry || isNaN(qty) || qty < 1) {
+            alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+            return;
+        }
+
+        item.name = name;
+        item.lot = lot;
+        item.slot = lot; // ล็อต และ ช่องจัดเก็บ เป็นอันเดียวกัน
+        item.expiry = expiry;
+        item.qty = qty;
+        item.status = computeStatus(expiry);
+
+        saveKnownLot(lot);
+
         state.history.unshift({
-            text: `${actionText} - ${item.name} (Lot ${item.lot}) จำนวน ${item.qty} ชิ้น จากช่อง ${item.slot}`,
+            text: `แก้ไขข้อมูล: ${name} (ล็อต ${lot}) คงเหลือ ${qty} ชิ้น หมดอายุ ${expiry}`,
             date: new Date().toLocaleString('th-TH')
         });
-        state.inventory.splice(itemIndex, 1); 
+
+        closeEditModal();
         renderDashboard();
         renderInventory(searchInput.value);
-        alert('ดำเนินการสำเร็จ ระบบได้บันทึกประวัติและอัปเดตคลังเรียบร้อย');
+    });
+
+    // Close when clicking the dark backdrop
+    document.getElementById('edit-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'edit-modal') closeEditModal();
+    });
+}
+
+// ===================== ACTION (DISPOSITION) MODAL =====================
+let actionItemId = null;
+
+window.openActionModal = function(id) {
+    const item = state.inventory.find(i => i.id === id);
+    if (!item) return;
+    actionItemId = id;
+
+    const rec = recommendDisposition(item);
+    const recInfo = DISPOSITION_INFO[rec.key];
+
+    // หัวข้อสินค้า
+    const statusText = item.status === 'green' ? 'ปลอดภัย' : item.status === 'yellow' ? 'เสี่ยง' : 'วิกฤต';
+    document.getElementById('action-item-summary').innerHTML = `
+        <div class="ai-summary-name">${item.name}</div>
+        <div class="ai-summary-meta">ล็อต ${item.slot || item.lot} · คงเหลือ ${item.qty} ชิ้น · หมดอายุ ${item.expiry} · สถานะ ${statusText}</div>
+    `;
+
+    // คำแนะนำของ AI
+    document.getElementById('action-ai-rec').innerHTML = `
+        <i class="fa-solid fa-robot"></i>
+        <div>
+            <strong>AI แนะนำ:</strong> ${recInfo.label}<br>
+            <span style="color:var(--text-muted);">${rec.reason}</span>
+        </div>
+    `;
+
+    // ตัวเลือกวิธีดำเนินการ (เลือกค่าแนะนำไว้ก่อน)
+    const optWrap = document.getElementById('action-options');
+    optWrap.innerHTML = '';
+    Object.keys(DISPOSITION_INFO).forEach(key => {
+        const info = DISPOSITION_INFO[key];
+        const checked = key === rec.key ? 'checked' : '';
+        const selCls = key === rec.key ? 'selected' : '';
+        optWrap.innerHTML += `
+            <label class="disp-option ${selCls}" data-key="${key}">
+                <input type="radio" name="disp" value="${key}" ${checked} />
+                <span class="disp-icon" style="color:${info.color};"><i class="fa-solid ${info.icon}"></i></span>
+                <span class="disp-label">${info.label}</span>
+            </label>
+        `;
+    });
+    optWrap.querySelectorAll('.disp-option').forEach(opt => {
+        opt.addEventListener('click', () => {
+            optWrap.querySelectorAll('.disp-option').forEach(o => o.classList.remove('selected'));
+            opt.classList.add('selected');
+            opt.querySelector('input').checked = true;
+        });
+    });
+
+    document.getElementById('action-qty').value = item.qty;
+    document.getElementById('action-qty').max = item.qty;
+
+    document.getElementById('action-modal').classList.remove('hidden');
+}
+
+window.closeActionModal = function() {
+    actionItemId = null;
+    document.getElementById('action-modal').classList.add('hidden');
+}
+
+function initActionModal() {
+    const form = document.getElementById('action-form');
+    if (!form) return;
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const item = state.inventory.find(i => i.id === actionItemId);
+        if (!item) return;
+
+        const dispEl = form.querySelector('input[name="disp"]:checked');
+        const disposition = dispEl ? dispEl.value : 'discount';
+        let qty = parseInt(document.getElementById('action-qty').value, 10) || item.qty;
+        qty = Math.min(Math.max(qty, 1), item.qty);
+
+        const info = DISPOSITION_INFO[disposition];
+
+        // บันทึกการดำเนินการลงระบบ
+        const record = {
+            id: 'act_' + Date.now(),
+            itemId: item.id,
+            productName: item.name,
+            lot: item.slot || item.lot,
+            qty,
+            disposition,
+            channel: info.channel,
+            steps: info.steps,
+            status: 'pending',
+            createdAt: new Date().toLocaleString('th-TH')
+        };
+        state.actions.unshift(record);
+        persistActions();
+
+        // ตัดสต็อก
+        if (qty >= item.qty) {
+            state.inventory = state.inventory.filter(i => i.id !== item.id);
+        } else {
+            item.qty -= qty;
+            item.status = computeStatus(item.expiry);
+        }
+
+        // ประวัติย่อ
+        state.history.unshift({
+            text: `${info.label}: ${record.productName} (ล็อต ${record.lot}) จำนวน ${qty} ชิ้น`,
+            date: new Date().toLocaleString('th-TH')
+        });
+
+        closeActionModal();
+        renderDashboard();
+        renderInventory(searchInput.value);
+        renderHistory();
+
+        // ข้อความยืนยัน + ชวนถาม AI ต่อ
+        pushAssistant(`บันทึกการดำเนินการเรียบร้อย ✅\n\n**${info.label} – ${record.productName}** (${qty} ชิ้น)\n📍 ส่งไปที่: ${info.channel}\n\nอยากให้ช่วยอธิบายขั้นตอนการดำเนินการไหมครับ? พิมพ์ถามได้เลย เช่น "${record.productName} ทำยังไง"`);
+        openChat();
+    });
+
+    document.getElementById('action-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'action-modal') closeActionModal();
+    });
+}
+
+// ===================== ผู้ช่วย AI (CHAT) =====================
+function initChat() {
+    const fab = document.getElementById('chat-fab');
+    const closeBtn = document.getElementById('chat-close');
+    const form = document.getElementById('chat-form');
+    if (!fab) return;
+
+    fab.addEventListener('click', openChat);
+    closeBtn.addEventListener('click', closeChat);
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        if (!text) return;
+        pushUser(text);
+        input.value = '';
+        // ตอบกลับ (หน่วงเล็กน้อยให้เหมือนกำลังคิด)
+        setTimeout(() => pushAssistant(getAssistantReply(text)), 350);
+    });
+
+    // ทักทายครั้งแรก
+    if (state.chat.length === 0) {
+        state.chat.push({
+            role: 'assistant',
+            text: 'สวัสดีครับ ผมเป็นผู้ช่วย FreshFlow 🤖\nถามผมได้เลยเรื่องการจัดการสินค้า เช่น\n• "วันนี้มีอะไรต้องจัดการบ้าง"\n• "ขนมปังต้องส่งไปที่ไหน"\n• "บริจาคทำยังไง"'
+        });
+        persistChat();
     }
+}
+
+window.openChat = function() {
+    document.getElementById('chat-panel').classList.remove('hidden');
+    document.getElementById('chat-fab').classList.add('hidden');
+    renderChat();
+}
+window.closeChat = function() {
+    const panel = document.getElementById('chat-panel');
+    if (panel) panel.classList.add('hidden');
+    const fab = document.getElementById('chat-fab');
+    if (fab) fab.classList.remove('hidden');
+}
+
+function pushUser(text) {
+    state.chat.push({ role: 'user', text });
+    persistChat();
+    renderChat();
+}
+function pushAssistant(text) {
+    state.chat.push({ role: 'assistant', text });
+    persistChat();
+    renderChat();
+}
+
+function renderChat() {
+    const box = document.getElementById('chat-messages');
+    if (!box) return;
+    box.innerHTML = '';
+    state.chat.forEach(m => {
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble ' + (m.role === 'user' ? 'chat-user' : 'chat-bot');
+        // แปลง \n เป็น <br> และ **bold**
+        const html = m.text
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\n/g, '<br>');
+        bubble.innerHTML = html;
+        box.appendChild(bubble);
+    });
+    box.scrollTop = box.scrollHeight;
+}
+
+// กดปุ่ม "ถาม AI" จากการ์ดการดำเนินการ
+window.askAboutAction = function(actionId) {
+    const act = state.actions.find(a => a.id === actionId);
+    if (!act) return;
+    openChat();
+    pushUser(`${act.productName} ดำเนินการยังไง`);
+    setTimeout(() => pushAssistant(getAssistantReply(`${act.productName} ดำเนินการยังไง`)), 350);
+}
+
+// --- สมองของผู้ช่วย: ตอบจากข้อมูลจริงในระบบ ---
+function getAssistantReply(rawText) {
+    const text = rawText.toLowerCase();
+
+    const askWhere = /(ที่ไหน|ส่งไป|ส่งที่|บริจาคที่|ติดต่อ|เอาไปไหน|ไปที่ไหน)/.test(text);
+    const askHow = /(ยังไง|อย่างไร|ขั้นตอน|ทำไง|วิธี|ดำเนินการ|จัดการยังไง)/.test(text);
+    const askSummary = /(อะไรบ้าง|มีอะไร|สรุป|วันนี้|ต้องจัดการ|เร่งด่วน|ภาพรวม)/.test(text);
+
+    // หา "สินค้า" ที่ถูกพูดถึง (จาก action ที่บันทึก หรือจากคลัง)
+    const matchedAction = state.actions.find(a => text.includes(a.productName.toLowerCase().slice(0, 4)));
+    const matchedItem = state.inventory.find(i => text.includes(i.name.toLowerCase().slice(0, 4)));
+
+    // ตรวจว่าพูดถึงวิธีดำเนินการตรงๆ ไหม (บริจาค/ทิ้ง/ลดราคา/คืน/โอน)
+    let dispKey = null;
+    if (/บริจาค/.test(text)) dispKey = 'donate';
+    else if (/ทิ้ง|ทำลาย/.test(text)) dispKey = 'dispose';
+    else if (/ลดราคา|ป้ายเหลือง/.test(text)) dispKey = 'discount';
+    else if (/คืน|ผู้ผลิต|ซัพ|ตัวแทน/.test(text)) dispKey = 'return';
+    else if (/โอน|สาขา/.test(text)) dispKey = 'transfer';
+    else if (/จับคู่|โปรโมชั่น|โปร/.test(text)) dispKey = 'bundle';
+
+    // 1) สรุปงานที่ต้องทำ
+    if (askSummary && !matchedAction && !matchedItem && !dispKey) {
+        return summaryReply();
+    }
+
+    // 2) ถามถึงสินค้าที่ "ดำเนินการไปแล้ว"
+    if (matchedAction) {
+        const info = DISPOSITION_INFO[matchedAction.disposition];
+        if (askWhere) {
+            return `**${matchedAction.productName}** (ล็อต ${matchedAction.lot}) คุณเลือกวิธี "${info.label}" ไว้\n\n📍 ส่งไปที่: **${info.channel}**`;
+        }
+        // default = ขั้นตอน
+        return `วิธีดำเนินการ "${info.label}" สำหรับ **${matchedAction.productName}** (${matchedAction.qty} ชิ้น):\n\n${info.steps.map((s, idx) => `${idx + 1}. ${s}`).join('\n')}\n\n📍 ส่งไปที่: ${info.channel}`;
+    }
+
+    // 3) ถามถึงสินค้าที่ยังอยู่ในคลัง (ยังไม่ดำเนินการ)
+    if (matchedItem) {
+        const rec = recommendDisposition(matchedItem);
+        const info = DISPOSITION_INFO[rec.key];
+        if (askWhere) {
+            return `**${matchedItem.name}** ยังไม่ได้บันทึกการดำเนินการ\n\nAI แนะนำให้ "${info.label}" → ส่งไปที่ **${info.channel}**\n(${rec.reason})\n\nถ้าตัดสินใจแล้ว กดปุ่ม "ดำเนินการ" ที่หน้าคลังสินค้าได้เลยครับ`;
+        }
+        return `**${matchedItem.name}** (คงเหลือ ${matchedItem.qty} ชิ้น, หมดอายุ ${matchedItem.expiry})\n\nAI แนะนำ: **${info.label}**\nเหตุผล: ${rec.reason}\n\nขั้นตอน:\n${info.steps.map((s, idx) => `${idx + 1}. ${s}`).join('\n')}`;
+    }
+
+    // 4) ถามถึงวิธีดำเนินการแบบทั่วไป (ไม่ระบุสินค้า)
+    if (dispKey) {
+        const info = DISPOSITION_INFO[dispKey];
+        if (askWhere) {
+            return `วิธี "${info.label}" → ส่งไปที่ **${info.channel}**`;
+        }
+        return `ขั้นตอนการ "${info.label}":\n\n${info.steps.map((s, idx) => `${idx + 1}. ${s}`).join('\n')}\n\n📍 ส่งไปที่: ${info.channel}`;
+    }
+
+    // 5) ตอบเริ่มต้น
+    if (askSummary) return summaryReply();
+    return `ผมช่วยเรื่องการจัดการสินค้าใกล้หมดอายุได้ครับ ลองถามแบบนี้ดู:\n• "วันนี้มีอะไรต้องจัดการบ้าง"\n• "${(state.inventory[0] && state.inventory[0].name) || 'ขนมปัง'} ต้องส่งไปที่ไหน"\n• "บริจาคทำยังไง"`;
+}
+
+function summaryReply() {
+    const risk = state.inventory.filter(i => i.status !== 'green');
+    const pending = state.actions.filter(a => a.status === 'pending');
+
+    let msg = '';
+    if (risk.length === 0) {
+        msg += 'ตอนนี้ไม่มีสินค้าที่เสี่ยง/วิกฤตในคลังครับ 👍\n';
+    } else {
+        msg += `มีสินค้าที่ต้องจัดการ ${risk.length} รายการ:\n`;
+        risk.slice(0, 6).forEach(i => {
+            const rec = recommendDisposition(i);
+            msg += `• ${i.name} (${i.qty} ชิ้น, หมดอายุ ${i.expiry}) → แนะนำ ${DISPOSITION_INFO[rec.key].label}\n`;
+        });
+    }
+    if (pending.length > 0) {
+        msg += `\nยังมีงานที่บันทึกไว้แต่ยังไม่เสร็จ ${pending.length} รายการ (ดูได้ที่แท็บ "ประวัติ")`;
+    }
+    return msg.trim();
 }
 
 // --- CAMERA & AR SCANNER LOGIC ---
@@ -419,8 +1018,8 @@ function saveKnownLot(lot) {
 }
 
 // Show ALL saved lots as clickable chips (independent of product)
-function renderLotChips() {
-    const container = document.getElementById('lot-chips-container');
+function renderLotChips(containerId = 'lot-chips-container', inputId = 'scan-lot') {
+    const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
 
@@ -443,7 +1042,8 @@ function renderLotChips() {
         chip.className = 'lot-chip';
         chip.innerHTML = `<i class="fa-solid fa-warehouse"></i> ${lot}<small style="opacity:.65; font-weight:400;">${info}</small>`;
         chip.addEventListener('click', () => {
-            document.getElementById('scan-lot').value = lot;
+            const input = document.getElementById(inputId);
+            if (input) input.value = lot;
             container.querySelectorAll('.lot-chip').forEach(c => c.classList.remove('selected'));
             chip.classList.add('selected');
         });
