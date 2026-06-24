@@ -139,7 +139,6 @@ function renderDashboard() {
     }
 
     riskItems.forEach(item => {
-        // Skip bread as we already rendered bundle for it above to avoid duplicate UI clutter
         if(item.name.includes('ขนมปัง')) return; 
 
         const actionText = item.status === 'red' ? 'ส่งบริจาค / Clearance Sale' : 'จัดโปรโมชั่นลดราคาด่วน';
@@ -206,7 +205,6 @@ window.applyRestock = function(index) {
         text: `อนุมัติ AI ปรับยอดสั่งซื้อ ${pred.name} จาก ${pred.currentOrder} เป็น ${pred.recommendedOrder} ชิ้น`,
         date: new Date().toLocaleString('th-TH')
     });
-    // Remove prediction after applied
     state.restockPredictions.splice(index, 1);
     renderDashboard();
     alert('ระบบได้ปรับยอดแผนการสั่งซื้อ (PO) ในรอบถัดไปอัตโนมัติ');
@@ -313,8 +311,9 @@ window.takeAction = function(id, actionText) {
     }
 }
 
-// --- CAMERA & SCANNER LOGIC ---
+// --- CAMERA & AR SCANNER LOGIC ---
 let videoStream = null;
+let arAnimationId = null;
 const videoEl = document.getElementById('camera-feed');
 const captureBtn = document.getElementById('capture-btn');
 const scanResults = document.getElementById('scan-results');
@@ -323,6 +322,10 @@ const canvas = document.getElementById('snapshot-canvas');
 const preview = document.getElementById('captured-image-preview');
 const rescanBtn = document.getElementById('rescan-btn');
 const saveForm = document.getElementById('save-item-form');
+const arOverlay = document.getElementById('ar-overlay');
+
+// Global mock data to be set during AR mode and used when captured
+let currentARData = {};
 
 async function startCamera() {
     try {
@@ -330,31 +333,99 @@ async function startCamera() {
             video: { facingMode: 'environment' } 
         });
         videoEl.srcObject = videoStream;
+        
+        // Start the AR tracking simulation
+        startARSimulation();
     } catch (err) {
         console.error("Error accessing camera:", err);
         videoEl.outerHTML = '<div style="color:white; display:flex; height:100%; align-items:center; justify-content:center; text-align:center; padding:20px;">ไม่สามารถเข้าถึงกล้องได้<br>(กำลังใช้ระบบจำลอง)</div>';
+        startARSimulation(); // Start simulation anyway for demo purposes
     }
 }
 
 function stopCamera() {
+    stopARSimulation();
     if(videoStream) {
         videoStream.getTracks().forEach(track => track.stop());
         videoStream = null;
     }
 }
 
+// --- AR Simulation (Google Translate Style) ---
+function startARSimulation() {
+    if(arAnimationId) clearInterval(arAnimationId);
+    
+    // Prepare mock data that will be "detected"
+    const mockItems = ['ขนมปังฟาร์มเฮ้าส์', 'ซอสปรุงรส', 'น้ำแร่ธรรมชาติ', 'นมสดพาสเจอร์ไรส์ 1 ลิตร'];
+    currentARData.name = mockItems[Math.floor(Math.random() * mockItems.length)];
+    currentARData.lot = 'L-' + Math.floor(Math.random() * 100000);
+    
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + Math.floor(Math.random() * 35) - 5);
+    currentARData.expiry = expiryDate.toISOString().split('T')[0];
+    currentARData.qty = Math.floor(Math.random() * 50) + 10;
+
+    arOverlay.innerHTML = '';
+    
+    // Update AR overlay positions every 600ms to simulate tracking
+    arAnimationId = setInterval(() => {
+        arOverlay.innerHTML = ''; // Clear old boxes
+        
+        // Product Name Box
+        if(Math.random() > 0.1) {
+            const el = document.createElement('div');
+            el.className = 'ar-box product';
+            el.style.top = (30 + Math.random() * 10) + '%';
+            el.style.left = (20 + Math.random() * 40) + '%';
+            el.innerHTML = `<i class="fa-solid fa-box"></i> ${currentARData.name}`;
+            arOverlay.appendChild(el);
+        }
+
+        // Lot Number Box
+        if(Math.random() > 0.2) {
+            const el = document.createElement('div');
+            el.className = 'ar-box lot';
+            el.style.top = (50 + Math.random() * 15) + '%';
+            el.style.left = (15 + Math.random() * 30) + '%';
+            el.innerHTML = `<i class="fa-solid fa-barcode"></i> LOT: ${currentARData.lot}`;
+            arOverlay.appendChild(el);
+        }
+
+        // Expiry Date Box
+        if(Math.random() > 0.1) {
+            const el = document.createElement('div');
+            el.className = 'ar-box expiry';
+            el.style.top = (70 + Math.random() * 10) + '%';
+            el.style.left = (40 + Math.random() * 30) + '%';
+            el.innerHTML = `<i class="fa-solid fa-calendar-xmark"></i> EXP: ${currentARData.expiry}`;
+            arOverlay.appendChild(el);
+        }
+    }, 800);
+}
+
+function stopARSimulation() {
+    if(arAnimationId) clearInterval(arAnimationId);
+    if(arOverlay) arOverlay.innerHTML = '';
+}
+
+
 function resetScannerUI() {
     cameraContainer.classList.remove('hidden');
     scanResults.classList.add('hidden');
     captureBtn.disabled = false;
-    captureBtn.innerHTML = '<i class="fa-solid fa-camera"></i> ถ่ายรูป / สแกน';
+    captureBtn.innerHTML = '<i class="fa-solid fa-camera"></i> จับภาพข้อมูล';
     saveForm.reset();
     document.getElementById('scan-qty').value = "10";
+    
+    startARSimulation(); // Resume AR overlay
 }
 
 function initScannerLogic() {
     captureBtn.addEventListener('click', () => {
-        captureBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังให้ AI วิเคราะห์...';
+        // Pause AR immediately
+        stopARSimulation();
+        
+        captureBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังประมวลผล...';
         captureBtn.disabled = true;
 
         if(videoEl && videoStream) {
@@ -367,25 +438,33 @@ function initScannerLogic() {
             preview.style.backgroundColor = '#ccc';
         }
 
+        // Fast transition since AR already "detected" the text
         setTimeout(() => {
             cameraContainer.classList.add('hidden');
             scanResults.classList.remove('hidden');
             
-            const mockItems = ['ขนมปังฟาร์มเฮ้าส์', 'ซอสปรุงรส', 'น้ำแร่ธรรมชาติ', 'นมสดพาสเจอร์ไรส์ 1 ลิตร', 'โยเกิร์ตรสธรรมชาติ'];
-            const randomItem = mockItems[Math.floor(Math.random() * mockItems.length)];
-            const randomLot = 'L-' + Math.floor(Math.random() * 100000);
+            // Populate form with the data that was floating in AR
+            document.getElementById('scan-name').value = currentARData.name;
+            document.getElementById('scan-lot').value = currentARData.lot;
+            document.getElementById('scan-expiry').value = currentARData.expiry;
+            document.getElementById('scan-qty').value = currentARData.qty;
             
-            const expiryDate = new Date();
-            expiryDate.setDate(expiryDate.getDate() + Math.floor(Math.random() * 35) - 5);
+            // Generate a mini AR overlay on top of the static preview image
+            preview.innerHTML = `
+                <div class="preview-ar-overlay">
+                    <div class="ar-box product" style="top: 30%; left: 30%;"><i class="fa-solid fa-box"></i> ${currentARData.name}</div>
+                    <div class="ar-box lot" style="top: 50%; left: 20%;"><i class="fa-solid fa-barcode"></i> LOT: ${currentARData.lot}</div>
+                    <div class="ar-box expiry" style="top: 70%; left: 45%;"><i class="fa-solid fa-calendar-xmark"></i> EXP: ${currentARData.expiry}</div>
+                </div>
+            `;
             
-            document.getElementById('scan-name').value = randomItem;
-            document.getElementById('scan-lot').value = randomLot;
-            document.getElementById('scan-expiry').value = expiryDate.toISOString().split('T')[0];
-            document.getElementById('scan-qty').value = Math.floor(Math.random() * 50) + 10;
-        }, 1500);
+        }, 500); // Shorter delay because AR already did the work
     });
 
-    rescanBtn.addEventListener('click', resetScannerUI);
+    rescanBtn.addEventListener('click', () => {
+        preview.innerHTML = ''; // clear static AR overlay
+        resetScannerUI();
+    });
 
     saveForm.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -418,6 +497,7 @@ function initScannerLogic() {
 
         alert(`เติมสต็อก ${name} จำนวน ${qty} ชิ้น เรียบร้อยแล้ว!`);
         saveForm.reset();
+        preview.innerHTML = '';
         switchView('inventory');
     });
 }

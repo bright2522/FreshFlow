@@ -127,8 +127,8 @@
             <section id="inbound-view" class="view-section">
                 <header class="section-header">
                     <div class="header-title">
-                        <h1>สแกนเติมสต็อก / รับเข้าสินค้า</h1>
-                        <p>ใช้กล้องถ่ายรูปฉลากสินค้า AI จะดึงข้อมูล Lot และวันหมดอายุอัตโนมัติ</p>
+                        <h1>สแกนเติมสต็อก / รับเข้าสินค้า (AR Mode)</h1>
+                        <p>เล็งกล้องไปที่ฉลาก AI จะไฮไลท์ข้อความบนภาพแบบเรียลไทม์</p>
                     </div>
                 </header>
 
@@ -137,21 +137,24 @@
                         <video id="camera-feed" autoplay playsinline></video>
                         <canvas id="snapshot-canvas" class="hidden"></canvas>
                         
+                        <!-- AR Overlay (Real-time detection boxes) -->
+                        <div id="ar-overlay" class="ar-overlay"></div>
+                        
+                        <!-- Static Overlay UI -->
                         <div class="scan-frame" id="scan-frame-ui">
                             <div class="corner top-left"></div>
                             <div class="corner top-right"></div>
                             <div class="corner bottom-left"></div>
                             <div class="corner bottom-right"></div>
-                            <div class="scan-line" id="scan-line-ui"></div>
                         </div>
                         
                         <div class="camera-controls">
-                            <button class="btn btn-primary scan-btn" id="capture-btn"><i class="fa-solid fa-camera"></i> ถ่ายรูป / สแกน</button>
+                            <button class="btn btn-primary scan-btn" id="capture-btn"><i class="fa-solid fa-camera"></i> จับภาพข้อมูล</button>
                         </div>
                     </div>
 
                     <div class="scan-results hidden" id="scan-results">
-                        <h3>ข้อมูลที่ AI อ่านได้จากภาพ</h3>
+                        <h3>ข้อมูลที่ดึงได้จากภาพ</h3>
                         <div id="captured-image-preview" class="image-preview"></div>
                         <form class="scan-form" id="save-item-form">
                             <div class="form-group">
