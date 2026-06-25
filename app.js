@@ -496,12 +496,12 @@ function renderInventory(searchQuery = '') {
         
         list.innerHTML += `
             <tr>
-                <td><span class="slot-badge">${lotValue}</span></td>
-                <td style="font-weight:600; color:var(--text-main);">${item.name}</td>
-                <td style="font-weight:700; color:var(--primary-color);">${item.qty.toLocaleString()}</td>
-                <td style="color:var(--text-muted); font-size:13px;">${item.expiry}</td>
-                <td><span class="badge" style="background: var(--${item.status === 'green' ? 'success' : item.status === 'yellow' ? 'warning' : 'danger'}-color); padding: 4px 12px;">${statusText}</span></td>
-                <td style="white-space:nowrap;">
+                <td data-label="ล็อต/ช่อง"><span class="slot-badge">${lotValue}</span></td>
+                <td data-label="สินค้า" style="font-weight:600; color:var(--text-main);">${item.name}</td>
+                <td data-label="จำนวน" style="font-weight:700; color:var(--primary-color);">${item.qty.toLocaleString()}</td>
+                <td data-label="หมดอายุ" style="color:var(--text-muted); font-size:13px;">${item.expiry}</td>
+                <td data-label="สถานะ"><span class="badge" style="background: var(--${item.status === 'green' ? 'success' : item.status === 'yellow' ? 'warning' : 'danger'}-color); padding: 4px 12px;">${statusText}</span></td>
+                <td data-label="จัดการ" class="cell-actions" style="white-space:nowrap;">
                     <button class="btn btn-primary" style="padding: 5px 12px; font-size:12px; margin-right:6px;" onclick="openActionModal(${item.id})"><i class="fa-solid fa-bolt"></i> ดำเนินการ</button>
                     <button class="btn btn-outline" style="padding: 5px 10px; font-size:12px;" onclick="openEditModal(${item.id})"><i class="fa-solid fa-pen"></i> แก้ไข</button>
                 </td>
@@ -1111,11 +1111,11 @@ function renderVatView() {
     state.receipts.forEach(r => {
         list.innerHTML += `
             <tr>
-                <td style="font-family:monospace; color:var(--text-muted);">${r.ref}</td>
-                <td>${r.vendor || '-'}</td>
-                <td style="font-weight:600;">฿${r.total.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-                <td style="color:var(--primary-color); font-weight:700;">฿${r.vat.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-                <td>
+                <td data-label="เลขที่" style="font-family:monospace; color:var(--text-muted);">${r.ref}</td>
+                <td data-label="ผู้ขาย">${r.vendor || '-'}</td>
+                <td data-label="ยอดรวม" style="font-weight:600;">฿${r.total.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                <td data-label="VAT 7%" style="color:var(--primary-color); font-weight:700;">฿${r.vat.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                <td data-label="จัดการ" class="cell-actions">
                     <button class="btn btn-outline" style="padding:4px 10px; font-size:12px;" onclick="deleteReceipt('${r.id}')"><i class="fa-solid fa-trash"></i></button>
                 </td>
             </tr>
