@@ -38,6 +38,27 @@ const state = {
 const BUSINESS_PRICE = 349; // บาท/เดือน
 const VAT_RATE = 0.07;
 
+// --- THEME (โหมดสว่าง/มืด) ---
+function loadTheme() {
+    return localStorage.getItem('freshflow_theme') === 'dark' ? 'dark' : 'light';
+}
+function applyTheme(theme) {
+    if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+    }
+    const icon = document.querySelector('#theme-toggle i');
+    if (icon) icon.className = theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+    const btn = document.getElementById('theme-toggle');
+    if (btn) btn.title = theme === 'dark' ? 'สลับเป็นโหมดสว่าง' : 'สลับเป็นโหมดมืด';
+}
+window.toggleTheme = function() {
+    const next = loadTheme() === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('freshflow_theme', next);
+    applyTheme(next);
+}
+
 // --- PLAN (แพ็กเกจการใช้งาน) ---
 function loadPlan() {
     return localStorage.getItem('freshflow_plan') === 'business' ? 'business' : 'free';
@@ -274,6 +295,7 @@ function initApp() {
     initPlans();
     initReceiptScan();
     updatePlanBadge();
+    applyTheme(loadTheme());
     renderDashboard();
     renderInventory();
     renderHistory();
