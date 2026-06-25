@@ -502,17 +502,21 @@ function renderInventory(searchQuery = '') {
     const filtered = sortedInventory.filter(item => {
         return item.name.toLowerCase().includes(lowerQuery) || 
                item.lot.toLowerCase().includes(lowerQuery) ||
-               (item.slot && item.slot.toLowerCase().includes(lowerQuery));
+               (item.slot && item.slot.toLowerCase().includes(lowerQuery)) ||
+               (item.source && item.source.toLowerCase().includes(lowerQuery));
     });
 
     filtered.forEach(item => {
         let statusText = item.status === 'green' ? 'ปลอดภัย' : item.status === 'yellow' ? 'เสี่ยง' : 'วิกฤต';
         const lotValue = item.slot || item.lot || 'ไม่ได้ระบุ';
+        const sourceLine = item.source
+            ? `<div class="item-source"><i class="fa-solid fa-truck-field"></i> ${item.source}</div>`
+            : '';
         
         list.innerHTML += `
             <tr>
                 <td data-label="ล็อต/ช่อง"><span class="slot-badge">${lotValue}</span></td>
-                <td data-label="สินค้า" style="font-weight:600; color:var(--text-main);">${item.name}</td>
+                <td data-label="สินค้า" style="font-weight:600; color:var(--text-main);">${item.name}${sourceLine}</td>
                 <td data-label="จำนวน" style="font-weight:700; color:var(--primary-color);">${item.qty.toLocaleString()}</td>
                 <td data-label="หมดอายุ" style="color:var(--text-muted); font-size:13px;">${item.expiry}</td>
                 <td data-label="สถานะ"><span class="badge" style="background: var(--${item.status === 'green' ? 'success' : item.status === 'yellow' ? 'warning' : 'danger'}-color); padding: 4px 12px;">${statusText}</span></td>
