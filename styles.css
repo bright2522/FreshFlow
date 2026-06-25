@@ -167,6 +167,7 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
 .ar-box.product { border-color: var(--primary-color); background: rgba(59, 130, 246, 0.4); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
 .ar-box.lot { border-color: var(--warning-color); background: rgba(245, 158, 11, 0.4); box-shadow: 0 0 10px rgba(245, 158, 11, 0.5); }
 .ar-box.expiry { border-color: #ec4899; background: rgba(236, 72, 153, 0.4); box-shadow: 0 0 10px rgba(236, 72, 153, 0.5); }
+.ar-box.source { border-color: #14b8a6; background: rgba(20, 184, 166, 0.4); box-shadow: 0 0 10px rgba(20, 184, 166, 0.5); }
 
 .scan-frame { width: 250px; height: 180px; position: absolute; z-index: 3; pointer-events: none; }
 .camera-controls { position: absolute; bottom: 20px; z-index: 4; width: 100%; text-align: center; }
@@ -337,3 +338,35 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
 .chat-input-row input:focus { border-color: var(--primary-color); }
 .chat-send { width: 40px; height: 40px; flex-shrink: 0; border: none; border-radius: 50%; background: var(--primary-color); color: #fff; cursor: pointer; font-size: 14px; transition: background 0.2s; }
 .chat-send:hover { background: var(--primary-hover); }
+
+/* ===== Plan badge (header) ===== */
+.plan-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 0.3px; }
+.plan-free { background: #e2e8f0; color: #475569; }
+.plan-business { background: linear-gradient(135deg, var(--warning-color), #f97316); color: #fff; }
+
+/* ===== Plans modal ===== */
+.plans-card { max-width: 720px; }
+.plans-grid { display: grid; grid-template-columns: 1fr; gap: 16px; padding: 20px; }
+@media (min-width: 640px) { .plans-grid { grid-template-columns: 1fr 1fr; } }
+.plan-col { border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 20px; position: relative; display: flex; flex-direction: column; }
+.plan-highlight { border: 2px solid var(--primary-color); box-shadow: 0 8px 24px rgba(59,130,246,0.15); }
+.plan-ribbon { position: absolute; top: -11px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, var(--primary-color), var(--purple-color)); color: #fff; font-size: 11px; font-weight: 600; padding: 3px 14px; border-radius: 20px; white-space: nowrap; }
+.plan-name { font-size: 18px; font-weight: 700; }
+.plan-price { font-size: 30px; font-weight: 800; color: var(--text-main); margin: 6px 0 14px; }
+.plan-price span { font-size: 14px; font-weight: 500; color: var(--text-muted); }
+.plan-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; flex: 1; }
+.plan-features li { font-size: 13px; display: flex; gap: 8px; align-items: flex-start; line-height: 1.45; }
+.plan-features li i { margin-top: 3px; color: var(--success-color); flex-shrink: 0; }
+.plan-features li.muted { color: var(--text-muted); }
+.plan-features li.muted i { color: #cbd5e1; }
+.plans-note { font-size: 11px; color: var(--text-muted); text-align: center; padding: 0 20px 18px; }
+
+/* ===== VAT locked state ===== */
+.vat-locked { background: var(--bg-card); border: 1px dashed var(--border-color); border-radius: var(--radius-lg); padding: 48px 24px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.vat-locked .lock-icon { width: 64px; height: 64px; border-radius: 50%; background: #fef3c7; color: var(--warning-color); display: flex; align-items: center; justify-content: center; font-size: 26px; }
+.vat-locked h2 { font-size: 20px; }
+.vat-locked p { color: var(--text-muted); font-size: 14px; line-height: 1.6; }
+
+/* ===== Receipt scan modal ===== */
+.receipt-actions { display: flex; gap: 10px; margin-bottom: 12px; }
+.receipt-ocr-status { font-size: 12px; color: var(--text-muted); min-height: 18px; margin-bottom: 8px; }
