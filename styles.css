@@ -524,3 +524,70 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
 .item-source { font-size: 12px; font-weight: 400; color: var(--text-muted); margin-top: 3px; display: flex; align-items: center; gap: 5px; }
 .item-source i { font-size: 11px; color: #14b8a6; }
 @media (max-width: 600px) { .item-source { justify-content: flex-end; } }
+
+/* ============================================================
+   DARK MODE
+   ============================================================ */
+[data-theme="dark"] {
+    --bg-main: #0f172a;
+    --bg-card: #1e293b;
+    --bg-nav: #1e293b;
+    --text-main: #e2e8f0;
+    --text-muted: #94a3b8;
+    --border-color: #334155;
+    --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.4);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.5), 0 2px 4px -1px rgba(0,0,0,0.4);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.6), 0 4px 6px -2px rgba(0,0,0,0.4);
+    --shadow-nav: 0 -4px 12px rgba(0,0,0,0.4);
+}
+
+/* Surfaces that were hardcoded light */
+[data-theme="dark"] .login-container { background: linear-gradient(135deg, #0b1220 0%, #1e293b 100%); }
+[data-theme="dark"] .login-card { background: var(--bg-card); }
+[data-theme="dark"] .select-input { background: var(--bg-card); color: var(--text-main); }
+[data-theme="dark"] .btn-action { background: #0f172a; }
+[data-theme="dark"] .inventory-table th { background-color: #0f172a; }
+[data-theme="dark"] .inventory-table tr:hover { background-color: #243044; }
+[data-theme="dark"] .inventory-table td { border-bottom-color: #334155 !important; }
+[data-theme="dark"] .image-preview { background-color: #334155; }
+[data-theme="dark"] .modal-close:hover { background: #334155; }
+[data-theme="dark"] .action-item-summary { background: #0f172a; }
+[data-theme="dark"] .ai-reasoning,
+[data-theme="dark"] .vat-preview { background: #0f172a; }
+[data-theme="dark"] .chat-messages { background: #0f172a; }
+[data-theme="dark"] .chat-bot { background: #1e293b; border-color: #334155; }
+[data-theme="dark"] .chat-input-row { background: var(--bg-card); }
+[data-theme="dark"] .chat-input-row input { background: #0f172a; color: var(--text-main); }
+
+/* Badges / chips / pills */
+[data-theme="dark"] .slot-badge { background: #334155; color: #cbd5e1; }
+[data-theme="dark"] .plan-free { background: #334155; color: #cbd5e1; }
+[data-theme="dark"] .lot-chip { background: #334155; color: var(--text-main); }
+[data-theme="dark"] .lot-chip:hover { background: rgba(59,130,246,0.22); }
+[data-theme="dark"] .tag-green { background: rgba(16,185,129,0.18); color: #6ee7b7; }
+[data-theme="dark"] .tag-yellow { background: rgba(245,158,11,0.18); color: #fcd34d; }
+[data-theme="dark"] .tag-red { background: rgba(239,68,68,0.18); color: #fca5a5; }
+[data-theme="dark"] .op-pending { background: rgba(245,158,11,0.18); color: #fcd34d; }
+[data-theme="dark"] .op-done { background: rgba(16,185,129,0.18); color: #6ee7b7; }
+
+/* Accent-tinted surfaces (selected / AI hints) */
+[data-theme="dark"] .recommendation-text,
+[data-theme="dark"] .action-ai-rec,
+[data-theme="dark"] .disp-option.selected,
+[data-theme="dark"] .vat-mode-opt.selected,
+[data-theme="dark"] .choice-card.selected { background: rgba(59,130,246,0.15); }
+[data-theme="dark"] .recommendation-warning { background: rgba(239,68,68,0.18); color: #fca5a5; }
+[data-theme="dark"] .choice-card.selected { color: #93c5fd; }
+[data-theme="dark"] .choice-card.selected i { color: #93c5fd; }
+
+/* Stat-icon tints toned down for dark */
+[data-theme="dark"] .stat-success .stat-icon { background: rgba(16,185,129,0.18); }
+[data-theme="dark"] .stat-warning .stat-icon { background: rgba(245,158,11,0.18); }
+[data-theme="dark"] .stat-danger .stat-icon { background: rgba(239,68,68,0.18); }
+[data-theme="dark"] .stat-info-card .stat-icon { background: rgba(59,130,246,0.18); }
+
+/* Misc */
+[data-theme="dark"] .btn-outline:hover { background: #334155; border-color: var(--text-muted); }
+[data-theme="dark"] .vat-locked .lock-icon { background: rgba(245,158,11,0.18); }
+[data-theme="dark"] .vat-locked { border-color: #334155; }
+[data-theme="dark"] .inventory-table tr { box-shadow: var(--shadow-sm); }
