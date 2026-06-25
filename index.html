@@ -492,8 +492,22 @@
                         <input type="text" id="receipt-vendor" placeholder="เช่น บจก. ฟาร์มเฮ้าส์" />
                     </div>
                     <div class="form-group">
-                        <label>ยอดรวมในใบเสร็จ (บาท, รวม VAT แล้ว)</label>
+                        <label>ยอดเงินในใบเสร็จ (บาท)</label>
                         <input type="number" id="receipt-amount" step="0.01" min="0" placeholder="เช่น 1070.00" required />
+                    </div>
+                    <div class="form-group">
+                        <label>ยอดที่กรอกนี้</label>
+                        <div class="vat-mode-toggle">
+                            <label class="vat-mode-opt selected">
+                                <input type="radio" name="vat-mode" value="inclusive" checked />
+                                <span>รวม VAT แล้ว</span>
+                            </label>
+                            <label class="vat-mode-opt">
+                                <input type="radio" name="vat-mode" value="exclusive" />
+                                <span>ยังไม่รวม VAT</span>
+                            </label>
+                        </div>
+                        <p id="vat-preview" class="vat-preview"></p>
                     </div>
                     <div class="form-actions">
                         <button type="button" class="btn btn-outline" onclick="closeReceiptScan()">ยกเลิก</button>
