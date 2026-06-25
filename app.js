@@ -1,12 +1,15 @@
 // App State
 const state = {
     inventory: [
-        { id: 1, name: 'ขนมปังฟาร์มเฮ้าส์', lot: 'A1-01', expiry: '2026-06-26', qty: 45, status: 'red', slot: 'A1-01' },
-        { id: 2, name: 'นมสดพาสเจอร์ไรส์ 1 ลิตร', lot: 'B2-04', expiry: '2026-07-05', qty: 50, status: 'green', slot: 'B2-04' },
-        { id: 3, name: 'นมสดพาสเจอร์ไรส์ 1 ลิตร', lot: 'B2-04', expiry: '2026-06-25', qty: 20, status: 'red', slot: 'B2-04' },
-        { id: 4, name: 'น้ำส้มคั้น 100%', lot: 'C3-11', expiry: '2026-06-30', qty: 30, status: 'yellow', slot: 'C3-11' },
-        { id: 5, name: 'แยมสตรอว์เบอร์รี', lot: 'D1-02', expiry: '2027-01-10', qty: 150, status: 'green', slot: 'D1-02' }
+        { id: 1, name: 'ขนมปังฟาร์มเฮ้าส์', lot: 'A1-01', expiry: '2026-06-26', qty: 45, status: 'red', slot: 'A1-01', source: 'ฟาร์มเฮ้าส์ (ผู้ผลิตโดยตรง)' },
+        { id: 2, name: 'นมสดพาสเจอร์ไรส์ 1 ลิตร', lot: 'B2-04', expiry: '2026-07-05', qty: 50, status: 'green', slot: 'B2-04', source: 'ตัวแทนจำหน่ายนมหนองโพ' },
+        { id: 3, name: 'นมสดพาสเจอร์ไรส์ 1 ลิตร', lot: 'B2-04', expiry: '2026-06-25', qty: 20, status: 'red', slot: 'B2-04', source: 'ตัวแทนจำหน่ายนมหนองโพ' },
+        { id: 4, name: 'น้ำส้มคั้น 100%', lot: 'C3-11', expiry: '2026-06-30', qty: 30, status: 'yellow', slot: 'C3-11', source: 'ตลาดไท (ค้าส่ง)' },
+        { id: 5, name: 'แยมสตรอว์เบอร์รี', lot: 'D1-02', expiry: '2027-01-10', qty: 150, status: 'green', slot: 'D1-02', source: 'ตัวแทนจำหน่ายฟู้ดส์' }
     ],
+    knownSources: [],
+    plan: 'free',         // 'free' | 'business'
+    receipts: [],         // ใบเสร็จที่สแกน (Business Plan)
     knownLots: [],
     profile: null,        // ข้อมูลร้าน (จากตอน Login)
     actions: [],          // บันทึกการดำเนินการแบบละเอียด
@@ -30,6 +33,40 @@ const state = {
         }
     ]
 };
+
+// ====== ราคาแพ็กเกจ Business (แก้ตัวเลขนี้ที่เดียวได้เลย) ======
+const BUSINESS_PRICE = 349; // บาท/เดือน
+const VAT_RATE = 0.07;
+
+// --- PLAN (แพ็กเกจการใช้งาน) ---
+function loadPlan() {
+    return localStorage.getItem('freshflow_plan') === 'business' ? 'business' : 'free';
+}
+function savePlan(plan) {
+    state.plan = plan;
+    localStorage.setItem('freshflow_plan', plan);
+}
+function isBusiness() {
+    return state.plan === 'business';
+}
+
+// --- RECEIPTS (ใบเสร็จ + VAT) ---
+function loadReceipts() {
+    try { state.receipts = JSON.parse(localStorage.getItem('freshflow_receipts') || '[]'); }
+    catch (e) { state.receipts = []; }
+}
+function persistReceipts() {
+    localStorage.setItem('freshflow_receipts', JSON.stringify(state.receipts));
+}
+// คำนวณ VAT แบบ "ราคารวม VAT แล้ว" (ใบเสร็จไทยส่วนใหญ่) => VAT = total * 7/107
+function calcVatFromInclusive(total) {
+    const vat = total * VAT_RATE / (1 + VAT_RATE);
+    return {
+        total: total,
+        base: total - vat,
+        vat: vat
+    };
+}
 
 // --- DISPOSITION KNOWLEDGE BASE (ใช้เป็นสมองของผู้ช่วย AI) ---
 const DISPOSITION_INFO = {
@@ -176,6 +213,9 @@ document.addEventListener('DOMContentLoaded', () => {
 function initApp() {
     state.knownLots = loadKnownLots();
     state.profile = loadProfile();
+    state.knownSources = loadKnownSources();
+    state.plan = loadPlan();
+    loadReceipts();
     loadActions();
     loadChat();
 
@@ -216,6 +256,9 @@ function initApp() {
     initOnboarding();
     initActionModal();
     initChat();
+    initPlans();
+    initReceiptScan();
+    updatePlanBadge();
     renderDashboard();
     renderInventory();
     renderHistory();
@@ -301,6 +344,7 @@ window.switchView = function(viewId) {
     if(viewId === 'dashboard') renderDashboard();
     if(viewId === 'inventory') renderInventory();
     if(viewId === 'actions') renderHistory();
+    if(viewId === 'vat') renderVatView();
 }
 
 // --- RENDERING LOGIC ---
@@ -502,7 +546,7 @@ function renderHistory() {
                     </div>
                     ${statusPill}
                 </div>
-                <div class="op-channel"><i class="fa-solid fa-location-arrow"></i> ส่งไปที่: <strong>${info.channel || '-'}</strong></div>
+                <div class="op-channel"><i class="fa-solid fa-location-arrow"></i> ส่งไปที่: <strong>${act.channel || info.channel || '-'}</strong></div>
                 <div class="op-card-actions">
                     <button class="btn btn-action" onclick="askAboutAction('${act.id}')"><i class="fa-solid fa-comments"></i> ถาม AI</button>
                     ${done ? '' : `<button class="btn btn-outline" style="padding:6px 14px; font-size:13px;" onclick="markActionDone('${act.id}')"><i class="fa-solid fa-check"></i> ทำเสร็จแล้ว</button>`}
@@ -567,6 +611,7 @@ window.openEditModal = function(id) {
     document.getElementById('edit-lot').value = item.slot || item.lot || '';
     document.getElementById('edit-expiry').value = item.expiry;
     document.getElementById('edit-qty').value = item.qty;
+    document.getElementById('edit-source').value = item.source || '';
 
     renderLotChips('edit-lot-chips-container', 'edit-lot');
 
@@ -591,6 +636,7 @@ function initEditModal() {
         const lot = document.getElementById('edit-lot').value.trim();
         const expiry = document.getElementById('edit-expiry').value;
         const qty = parseInt(document.getElementById('edit-qty').value, 10);
+        const source = document.getElementById('edit-source').value.trim();
 
         if (!name || !lot || !expiry || isNaN(qty) || qty < 1) {
             alert('กรุณากรอกข้อมูลให้ครบถ้วน');
@@ -602,9 +648,11 @@ function initEditModal() {
         item.slot = lot; // ล็อต และ ช่องจัดเก็บ เป็นอันเดียวกัน
         item.expiry = expiry;
         item.qty = qty;
+        item.source = source;
         item.status = computeStatus(expiry);
 
         saveKnownLot(lot);
+        saveKnownSource(source);
 
         state.history.unshift({
             text: `แก้ไขข้อมูล: ${name} (ล็อต ${lot}) คงเหลือ ${qty} ชิ้น หมดอายุ ${expiry}`,
@@ -699,6 +747,12 @@ function initActionModal() {
 
         const info = DISPOSITION_INFO[disposition];
 
+        // ถ้าเป็นการส่งคืน ให้ใช้ "แหล่งที่มาจริง" ของสินค้าเป็นปลายทาง
+        let channel = info.channel;
+        if (disposition === 'return' && item.source) {
+            channel = item.source;
+        }
+
         // บันทึกการดำเนินการลงระบบ
         const record = {
             id: 'act_' + Date.now(),
@@ -707,7 +761,8 @@ function initActionModal() {
             lot: item.slot || item.lot,
             qty,
             disposition,
-            channel: info.channel,
+            channel,
+            source: item.source || '',
             steps: info.steps,
             status: 'pending',
             createdAt: new Date().toLocaleString('th-TH')
@@ -735,7 +790,7 @@ function initActionModal() {
         renderHistory();
 
         // ข้อความยืนยัน + ชวนถาม AI ต่อ
-        pushAssistant(`บันทึกการดำเนินการเรียบร้อย ✅\n\n**${info.label} – ${record.productName}** (${qty} ชิ้น)\n📍 ส่งไปที่: ${info.channel}\n\nอยากให้ช่วยอธิบายขั้นตอนการดำเนินการไหมครับ? พิมพ์ถามได้เลย เช่น "${record.productName} ทำยังไง"`);
+        pushAssistant(`บันทึกการดำเนินการเรียบร้อย ✅\n\n**${info.label} – ${record.productName}** (${qty} ชิ้น)\n📍 ส่งไปที่: ${channel}\n\nอยากให้ช่วยอธิบายขั้นตอนการดำเนินการไหมครับ? พิมพ์ถามได้เลย เช่น "${record.productName} ทำยังไง"`);
         openChat();
     });
 
@@ -832,6 +887,17 @@ function getAssistantReply(rawText) {
     const askWhere = /(ที่ไหน|ส่งไป|ส่งที่|บริจาคที่|ติดต่อ|เอาไปไหน|ไปที่ไหน)/.test(text);
     const askHow = /(ยังไง|อย่างไร|ขั้นตอน|ทำไง|วิธี|ดำเนินการ|จัดการยังไง)/.test(text);
     const askSummary = /(อะไรบ้าง|มีอะไร|สรุป|วันนี้|ต้องจัดการ|เร่งด่วน|ภาพรวม)/.test(text);
+    const askSource = /(มาจากไหน|แหล่งที่มา|ซื้อมาจาก|รับมาจาก|ซัพพลายเออร์|ผู้ขายส่ง|มาจากที่ไหน)/.test(text);
+    const askVat = /(vat|ภาษี|ภาษีมูลค่าเพิ่ม|ใบเสร็จ)/i.test(text);
+    const askAnalysis = /(วิเคราะห์|analysis|มูลค่าความเสี่ยง|ขาดทุน|เทรนด์|trend|รายงาน|report|insight|ข้อมูลเชิงลึก)/i.test(text);
+
+    // 0.0) คำถามเชิงวิเคราะห์ / VAT — ฟีเจอร์ของ Business Plan
+    if (askVat || askAnalysis) {
+        if (!isBusiness()) {
+            return `ฟีเจอร์นี้เป็นของ **Business Plan** (฿${BUSINESS_PRICE.toLocaleString()}/เดือน) ครับ\nปลดล็อกการคำนวณ VAT อัตโนมัติ, สแกนใบเสร็จ และ AI วิเคราะห์ข้อมูลเชิงลึก\n\nกดปุ่ม "อัปเกรด" มุมขวาบนเพื่อเปิดใช้งานได้เลย`;
+        }
+        return businessInsightReply(askVat);
+    }
 
     // หา "สินค้า" ที่ถูกพูดถึง (จาก action ที่บันทึก หรือจากคลัง)
     const matchedAction = state.actions.find(a => text.includes(a.productName.toLowerCase().slice(0, 4)));
@@ -846,6 +912,23 @@ function getAssistantReply(rawText) {
     else if (/โอน|สาขา/.test(text)) dispKey = 'transfer';
     else if (/จับคู่|โปรโมชั่น|โปร/.test(text)) dispKey = 'bundle';
 
+    // 0) ถามแหล่งที่มาของสินค้า
+    if (askSource) {
+        const item = matchedItem || (matchedAction && state.inventory.find(i => i.name === matchedAction.productName));
+        if (item && item.source) {
+            return `**${item.name}** รับมาจาก: **${item.source}**\nล็อต ${item.slot || item.lot} · คงเหลือ ${item.qty} ชิ้น`;
+        }
+        if (matchedAction && matchedAction.source) {
+            return `**${matchedAction.productName}** รับมาจาก: **${matchedAction.source}**`;
+        }
+        // ไม่ได้ระบุสินค้า -> สรุปแหล่งที่มาทั้งหมด
+        const srcs = [...new Set(state.inventory.map(i => i.source).filter(Boolean))];
+        if (srcs.length) {
+            return `แหล่งที่มาของสินค้าในคลังตอนนี้:\n${srcs.map(s => `• ${s}`).join('\n')}\n\nถามเจาะจงสินค้าได้ครับ เช่น "ขนมปังมาจากไหน"`;
+        }
+        return 'ยังไม่มีข้อมูลแหล่งที่มาในระบบครับ ลองสแกนรับเข้าสินค้าพร้อมกรอกช่อง "แหล่งที่มา" ดูครับ';
+    }
+
     // 1) สรุปงานที่ต้องทำ
     if (askSummary && !matchedAction && !matchedItem && !dispKey) {
         return summaryReply();
@@ -855,20 +938,23 @@ function getAssistantReply(rawText) {
     if (matchedAction) {
         const info = DISPOSITION_INFO[matchedAction.disposition];
         if (askWhere) {
-            return `**${matchedAction.productName}** (ล็อต ${matchedAction.lot}) คุณเลือกวิธี "${info.label}" ไว้\n\n📍 ส่งไปที่: **${info.channel}**`;
+            return `**${matchedAction.productName}** (ล็อต ${matchedAction.lot}) คุณเลือกวิธี "${info.label}" ไว้\n\n📍 ส่งไปที่: **${matchedAction.channel || info.channel}**`;
         }
         // default = ขั้นตอน
-        return `วิธีดำเนินการ "${info.label}" สำหรับ **${matchedAction.productName}** (${matchedAction.qty} ชิ้น):\n\n${info.steps.map((s, idx) => `${idx + 1}. ${s}`).join('\n')}\n\n📍 ส่งไปที่: ${info.channel}`;
+        return `วิธีดำเนินการ "${info.label}" สำหรับ **${matchedAction.productName}** (${matchedAction.qty} ชิ้น):\n\n${info.steps.map((s, idx) => `${idx + 1}. ${s}`).join('\n')}\n\n📍 ส่งไปที่: ${matchedAction.channel || info.channel}`;
     }
 
     // 3) ถามถึงสินค้าที่ยังอยู่ในคลัง (ยังไม่ดำเนินการ)
     if (matchedItem) {
         const rec = recommendDisposition(matchedItem);
         const info = DISPOSITION_INFO[rec.key];
+        // ถ้าแนะนำให้ส่งคืน และรู้แหล่งที่มา ให้ระบุปลายทางจริง
+        const channel = (rec.key === 'return' && matchedItem.source) ? matchedItem.source : info.channel;
         if (askWhere) {
-            return `**${matchedItem.name}** ยังไม่ได้บันทึกการดำเนินการ\n\nAI แนะนำให้ "${info.label}" → ส่งไปที่ **${info.channel}**\n(${rec.reason})\n\nถ้าตัดสินใจแล้ว กดปุ่ม "ดำเนินการ" ที่หน้าคลังสินค้าได้เลยครับ`;
+            return `**${matchedItem.name}** ยังไม่ได้บันทึกการดำเนินการ\n\nAI แนะนำให้ "${info.label}" → ส่งไปที่ **${channel}**\n(${rec.reason})\n\nถ้าตัดสินใจแล้ว กดปุ่ม "ดำเนินการ" ที่หน้าคลังสินค้าได้เลยครับ`;
         }
-        return `**${matchedItem.name}** (คงเหลือ ${matchedItem.qty} ชิ้น, หมดอายุ ${matchedItem.expiry})\n\nAI แนะนำ: **${info.label}**\nเหตุผล: ${rec.reason}\n\nขั้นตอน:\n${info.steps.map((s, idx) => `${idx + 1}. ${s}`).join('\n')}`;
+        const srcLine = matchedItem.source ? `\nแหล่งที่มา: ${matchedItem.source}` : '';
+        return `**${matchedItem.name}** (คงเหลือ ${matchedItem.qty} ชิ้น, หมดอายุ ${matchedItem.expiry})${srcLine}\n\nAI แนะนำ: **${info.label}**\nเหตุผล: ${rec.reason}\n\nขั้นตอน:\n${info.steps.map((s, idx) => `${idx + 1}. ${s}`).join('\n')}`;
     }
 
     // 4) ถามถึงวิธีดำเนินการแบบทั่วไป (ไม่ระบุสินค้า)
@@ -903,6 +989,254 @@ function summaryReply() {
         msg += `\nยังมีงานที่บันทึกไว้แต่ยังไม่เสร็จ ${pending.length} รายการ (ดูได้ที่แท็บ "ประวัติ")`;
     }
     return msg.trim();
+}
+
+// วิเคราะห์ข้อมูลเชิงลึก (เฉพาะ Business Plan)
+function businessInsightReply(focusVat) {
+    // สรุป VAT
+    let total = 0, vat = 0;
+    state.receipts.forEach(r => { total += r.total; vat += r.vat; });
+    const vatBlock = `🧾 **สรุป VAT**\n• ใบเสร็จ ${state.receipts.length} ใบ · ยอดซื้อรวม ฿${total.toLocaleString(undefined,{maximumFractionDigits:2})}\n• VAT 7% รวม ฿${vat.toLocaleString(undefined,{maximumFractionDigits:2})}`;
+
+    if (focusVat) {
+        return state.receipts.length
+            ? vatBlock + `\n\n(คำนวณแบบราคารวม VAT แล้ว: VAT = ยอด × 7 ÷ 107)`
+            : 'ยังไม่มีใบเสร็จในระบบครับ ไปที่แท็บ "ใบเสร็จ/VAT" แล้วกด "สแกนใบเสร็จ" เพื่อเริ่มบันทึก';
+    }
+
+    // วิเคราะห์ความเสี่ยงสต็อก
+    const risk = state.inventory.filter(i => i.status !== 'green');
+    const riskQty = risk.reduce((s, i) => s + i.qty, 0);
+    const redQty = state.inventory.filter(i => i.status === 'red').reduce((s, i) => s + i.qty, 0);
+
+    // จัดกลุ่มความเสี่ยงตามแหล่งที่มา
+    const bySource = {};
+    risk.forEach(i => { const k = i.source || 'ไม่ระบุแหล่งที่มา'; bySource[k] = (bySource[k] || 0) + i.qty; });
+    const topSource = Object.entries(bySource).sort((a, b) => b[1] - a[1])[0];
+
+    // อัตราการสูญเสีย (จาก actions: ทิ้ง = สูญเสีย, บริจาค/ลดราคา = กู้คืน)
+    const disposed = state.actions.filter(a => a.disposition === 'dispose').reduce((s, a) => s + a.qty, 0);
+    const rescued = state.actions.filter(a => ['donate', 'discount', 'bundle', 'return', 'transfer'].includes(a.disposition)).reduce((s, a) => s + a.qty, 0);
+    const handled = disposed + rescued;
+    const wasteRate = handled ? Math.round((disposed / handled) * 100) : 0;
+
+    let msg = `📊 **วิเคราะห์ข้อมูล (Business)**\n\n`;
+    msg += `**ความเสี่ยงสต็อก**\n• สินค้าเสี่ยง/วิกฤต ${risk.length} รายการ (${riskQty} ชิ้น), วิกฤตแล้ว ${redQty} ชิ้น\n`;
+    if (topSource) msg += `• แหล่งที่มาที่มีของเสี่ยงมากสุด: ${topSource[0]} (${topSource[1]} ชิ้น) — ควรลดปริมาณสั่งหรือเจรจาเงื่อนไขรับคืน\n`;
+    msg += `\n**ประสิทธิภาพการระบาย**\n`;
+    if (handled) {
+        msg += `• ดำเนินการไปแล้ว ${handled} ชิ้น · กู้คืนได้ ${rescued} ชิ้น · ทิ้งจริง ${disposed} ชิ้น\n• อัตราการสูญเสีย (waste rate) ≈ ${wasteRate}% ${wasteRate <= 20 ? '👍 อยู่ในเกณฑ์ดี' : '⚠️ ควรเร่งระบายให้เร็วขึ้น'}\n`;
+    } else {
+        msg += `• ยังไม่มีการดำเนินการที่บันทึกไว้ ลองกด "ดำเนินการ" กับสินค้าเสี่ยงเพื่อให้ผมวิเคราะห์ได้แม่นขึ้น\n`;
+    }
+    msg += `\n${vatBlock}`;
+    return msg;
+}
+
+// ===================== แพ็กเกจ / BUSINESS PLAN =====================
+function updatePlanBadge() {
+    const badge = document.getElementById('plan-badge');
+    const upgradeBtn = document.getElementById('header-upgrade-btn');
+    if (badge) {
+        badge.textContent = isBusiness() ? 'Business' : 'Free';
+        badge.className = 'plan-badge ' + (isBusiness() ? 'plan-business' : 'plan-free');
+    }
+    if (upgradeBtn) upgradeBtn.style.display = isBusiness() ? 'none' : '';
+    // อัปเดตป้ายราคาในหน้าต่างแพ็กเกจ
+    document.querySelectorAll('.js-price').forEach(el => { el.textContent = BUSINESS_PRICE.toLocaleString(); });
+}
+
+window.openPlans = function() {
+    document.getElementById('plans-modal').classList.remove('hidden');
+}
+window.closePlans = function() {
+    document.getElementById('plans-modal').classList.add('hidden');
+}
+
+function initPlans() {
+    const modal = document.getElementById('plans-modal');
+    if (!modal) return;
+    modal.addEventListener('click', (e) => {
+        if (e.target.id === 'plans-modal') closePlans();
+    });
+}
+
+window.upgradeToBusiness = function() {
+    savePlan('business');
+    updatePlanBadge();
+    closePlans();
+    renderDashboard();
+    // ถ้ากำลังอยู่หน้า VAT ให้รีเฟรช
+    if (document.getElementById('vat-view').classList.contains('active')) renderVatView();
+    alert('อัปเกรดเป็น Business Plan สำเร็จ! ปลดล็อกระบบ VAT, สแกนใบเสร็จ และ AI วิเคราะห์ข้อมูลแล้ว 🎉');
+}
+
+window.downgradeToFree = function() {
+    if (!confirm('ต้องการกลับไปใช้แพ็กเกจ Free ใช่ไหม? (ฟีเจอร์ VAT/สแกนใบเสร็จจะถูกล็อก)')) return;
+    savePlan('free');
+    updatePlanBadge();
+    if (document.getElementById('vat-view').classList.contains('active')) renderVatView();
+    alert('กลับมาใช้แพ็กเกจ Free แล้ว');
+}
+
+// ===================== ใบเสร็จ & VAT =====================
+function renderVatView() {
+    const locked = document.getElementById('vat-locked');
+    const content = document.getElementById('vat-content');
+
+    if (!isBusiness()) {
+        locked.classList.remove('hidden');
+        content.classList.add('hidden');
+        return;
+    }
+    locked.classList.add('hidden');
+    content.classList.remove('hidden');
+
+    // สรุปยอด
+    let totalSum = 0, vatSum = 0, baseSum = 0;
+    state.receipts.forEach(r => { totalSum += r.total; vatSum += r.vat; baseSum += r.base; });
+
+    document.getElementById('vat-stat-count').textContent = state.receipts.length.toLocaleString();
+    document.getElementById('vat-stat-total').textContent = '฿' + totalSum.toLocaleString(undefined, {maximumFractionDigits: 2});
+    document.getElementById('vat-stat-base').textContent = '฿' + baseSum.toLocaleString(undefined, {maximumFractionDigits: 2});
+    document.getElementById('vat-stat-vat').textContent = '฿' + vatSum.toLocaleString(undefined, {maximumFractionDigits: 2});
+
+    // รายการใบเสร็จ
+    const list = document.getElementById('receipt-list');
+    if (state.receipts.length === 0) {
+        list.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:24px; color:var(--text-muted);">ยังไม่มีใบเสร็จ กด "สแกนใบเสร็จ" เพื่อเริ่มต้น</td></tr>';
+        return;
+    }
+    list.innerHTML = '';
+    state.receipts.forEach(r => {
+        list.innerHTML += `
+            <tr>
+                <td style="font-family:monospace; color:var(--text-muted);">${r.ref}</td>
+                <td>${r.vendor || '-'}</td>
+                <td style="font-weight:600;">฿${r.total.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                <td style="color:var(--primary-color); font-weight:700;">฿${r.vat.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                <td>
+                    <button class="btn btn-outline" style="padding:4px 10px; font-size:12px;" onclick="deleteReceipt('${r.id}')"><i class="fa-solid fa-trash"></i></button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+window.deleteReceipt = function(id) {
+    state.receipts = state.receipts.filter(r => r.id !== id);
+    persistReceipts();
+    renderVatView();
+}
+
+// ---- Receipt Scan (Demo + OCR จริง) ----
+window.openReceiptScan = function() {
+    if (!isBusiness()) { openPlans(); return; }
+    document.getElementById('receipt-modal').classList.remove('hidden');
+    document.getElementById('receipt-amount').value = '';
+    document.getElementById('receipt-vendor').value = '';
+    document.getElementById('receipt-ocr-status').textContent = '';
+}
+window.closeReceiptScan = function() {
+    document.getElementById('receipt-modal').classList.add('hidden');
+}
+
+function initReceiptScan() {
+    const modal = document.getElementById('receipt-modal');
+    if (!modal) return;
+
+    modal.addEventListener('click', (e) => {
+        if (e.target.id === 'receipt-modal') closeReceiptScan();
+    });
+
+    // ปุ่มใช้ใบเสร็จตัวอย่าง (Demo)
+    document.getElementById('receipt-demo-btn').addEventListener('click', () => {
+        const vendors = ['บจก. ฟาร์มเฮ้าส์', 'ตัวแทนจำหน่ายนมหนองโพ', 'ตลาดไท', 'แม็คโคร สาขาลาดพร้าว', 'บจก. ฟู้ดส์ ซัพพลาย'];
+        const amount = Math.floor(Math.random() * 4000) + 500 + Math.random();
+        document.getElementById('receipt-vendor').value = vendors[Math.floor(Math.random() * vendors.length)];
+        document.getElementById('receipt-amount').value = amount.toFixed(2);
+        document.getElementById('receipt-ocr-status').innerHTML = '<i class="fa-solid fa-circle-check" style="color:var(--success-color);"></i> เติมข้อมูลจากใบเสร็จตัวอย่างแล้ว ตรวจสอบแล้วกดบันทึก';
+    });
+
+    // อัปโหลดรูปใบเสร็จ -> OCR อ่านยอดเงินจริง
+    document.getElementById('receipt-file').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const statusEl = document.getElementById('receipt-ocr-status');
+        statusEl.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> กำลังอ่านใบเสร็จด้วย AI (OCR)...';
+        try {
+            const result = await Tesseract.recognize(file, 'eng+tha');
+            const text = result.data.text || '';
+            const parsed = parseReceiptText(text);
+            if (parsed.amount) {
+                document.getElementById('receipt-amount').value = parsed.amount.toFixed(2);
+            }
+            if (parsed.vendor) {
+                document.getElementById('receipt-vendor').value = parsed.vendor;
+            }
+            statusEl.innerHTML = parsed.amount
+                ? `<i class="fa-solid fa-circle-check" style="color:var(--success-color);"></i> อ่านยอดเงินได้: ฿${parsed.amount.toFixed(2)} (ตรวจสอบก่อนบันทึกได้)`
+                : '<i class="fa-solid fa-triangle-exclamation" style="color:var(--warning-color);"></i> อ่านยอดเงินอัตโนมัติไม่ได้ กรุณากรอกเอง';
+        } catch (err) {
+            console.error(err);
+            statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="color:var(--danger-color);"></i> OCR ผิดพลาด กรุณากรอกยอดเงินเอง';
+        }
+    });
+
+    // บันทึกใบเสร็จ
+    document.getElementById('receipt-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const total = parseFloat(document.getElementById('receipt-amount').value);
+        const vendor = document.getElementById('receipt-vendor').value.trim();
+        if (isNaN(total) || total <= 0) { alert('กรุณากรอกยอดเงินให้ถูกต้อง'); return; }
+
+        const v = calcVatFromInclusive(total);
+        const seq = state.receipts.length + 1;
+        state.receipts.unshift({
+            id: 'rcp_' + Date.now(),
+            ref: 'R' + String(Date.now()).slice(-6),
+            vendor,
+            total: v.total,
+            base: v.base,
+            vat: v.vat,
+            createdAt: new Date().toLocaleString('th-TH')
+        });
+        persistReceipts();
+        closeReceiptScan();
+        renderVatView();
+    });
+}
+
+// ดึงยอดเงินจากข้อความ OCR (หาเลขที่ใหญ่ที่สุด / บรรทัดที่มีคำว่า total/รวม/สุทธิ)
+function parseReceiptText(text) {
+    const lines = text.split('\n');
+    let amount = null;
+    let vendor = null;
+
+    // ชื่อร้าน = บรรทัดแรกที่ไม่ใช่ตัวเลขล้วน
+    for (const l of lines) {
+        const t = l.trim();
+        if (t.length > 3 && !/^[\d\s.,:-]+$/.test(t)) { vendor = t.slice(0, 40); break; }
+    }
+
+    // มองหาบรรทัดที่มีคำว่ายอดรวม/สุทธิ/total ก่อน
+    const keyLines = lines.filter(l => /(รวม|สุทธิ|total|amount|grand)/i.test(l));
+    const numRegex = /(\d[\d,]*\.\d{2}|\d[\d,]{2,})/g;
+    const grab = (arr) => {
+        let best = null;
+        arr.forEach(l => {
+            const matches = l.match(numRegex);
+            if (matches) {
+                matches.forEach(m => {
+                    const n = parseFloat(m.replace(/,/g, ''));
+                    if (!isNaN(n) && (best === null || n > best)) best = n;
+                });
+            }
+        });
+        return best;
+    };
+    amount = grab(keyLines.length ? keyLines : lines);
+    return { amount, vendor };
 }
 
 // --- CAMERA & AR SCANNER LOGIC ---
@@ -949,7 +1283,12 @@ function startARSimulation() {
     const mockItems = ['ขนมปังฟาร์มเฮ้าส์', 'ซอสปรุงรส', 'น้ำแร่ธรรมชาติ', 'นมสดพาสเจอร์ไรส์ 1 ลิตร'];
     currentARData.name = mockItems[Math.floor(Math.random() * mockItems.length)];
     currentARData.lot = 'L-' + Math.floor(Math.random() * 100000);
-    
+    // แหล่งที่มา: ใช้ของร้านเป็นค่าตั้งต้น ไม่งั้นสุ่มจากตัวอย่าง
+    const mockSources = ['ผู้ผลิตโดยตรง', 'ตัวแทนจำหน่าย', 'ตลาดค้าส่ง', 'ศูนย์กระจายสินค้า'];
+    currentARData.source = (state.profile && state.profile.supplier)
+        ? state.profile.supplier
+        : mockSources[Math.floor(Math.random() * mockSources.length)];
+
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + Math.floor(Math.random() * 35) - 5);
     currentARData.expiry = expiryDate.toISOString().split('T')[0];
@@ -963,7 +1302,7 @@ function startARSimulation() {
         if(Math.random() > 0.1) {
             const el = document.createElement('div');
             el.className = 'ar-box product';
-            el.style.top = (30 + Math.random() * 10) + '%';
+            el.style.top = (28 + Math.random() * 10) + '%';
             el.style.left = (20 + Math.random() * 40) + '%';
             el.innerHTML = `<i class="fa-solid fa-box"></i> ${currentARData.name}`;
             arOverlay.appendChild(el);
@@ -972,7 +1311,7 @@ function startARSimulation() {
         if(Math.random() > 0.2) {
             const el = document.createElement('div');
             el.className = 'ar-box lot';
-            el.style.top = (50 + Math.random() * 15) + '%';
+            el.style.top = (46 + Math.random() * 12) + '%';
             el.style.left = (15 + Math.random() * 30) + '%';
             el.innerHTML = `<i class="fa-solid fa-barcode"></i> LOT: ${currentARData.lot}`;
             arOverlay.appendChild(el);
@@ -981,9 +1320,18 @@ function startARSimulation() {
         if(Math.random() > 0.1) {
             const el = document.createElement('div');
             el.className = 'ar-box expiry';
-            el.style.top = (70 + Math.random() * 10) + '%';
+            el.style.top = (64 + Math.random() * 8) + '%';
             el.style.left = (40 + Math.random() * 30) + '%';
             el.innerHTML = `<i class="fa-solid fa-calendar-xmark"></i> EXP: ${currentARData.expiry}`;
+            arOverlay.appendChild(el);
+        }
+
+        if(Math.random() > 0.25) {
+            const el = document.createElement('div');
+            el.className = 'ar-box source';
+            el.style.top = (80 + Math.random() * 6) + '%';
+            el.style.left = (18 + Math.random() * 30) + '%';
+            el.innerHTML = `<i class="fa-solid fa-truck-field"></i> SRC: ${currentARData.source}`;
             arOverlay.appendChild(el);
         }
     }, 800);
@@ -1051,6 +1399,49 @@ function renderLotChips(containerId = 'lot-chips-container', inputId = 'scan-lot
     });
 }
 
+// --- KNOWN SOURCES (แหล่งที่มา/ซัพพลายเออร์ ที่เคยใช้) ---
+function loadKnownSources() {
+    let stored = [];
+    try { stored = JSON.parse(localStorage.getItem('freshflow_sources') || '[]'); }
+    catch (e) { stored = []; }
+    const fromInventory = state.inventory.map(i => i.source).filter(Boolean);
+    const fromProfile = (state.profile && state.profile.supplier) ? [state.profile.supplier] : [];
+    return [...new Set([...stored, ...fromProfile, ...fromInventory])];
+}
+
+function saveKnownSource(src) {
+    if (!src) return;
+    if (!state.knownSources.includes(src)) state.knownSources.push(src);
+    localStorage.setItem('freshflow_sources', JSON.stringify(state.knownSources));
+}
+
+function renderSourceChips(containerId = 'source-chips-container', inputId = 'scan-source') {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+
+    const sources = [...state.knownSources].filter(Boolean);
+    if (sources.length === 0) return;
+
+    const label = document.createElement('span');
+    label.className = 'lot-chips-label';
+    label.textContent = 'แหล่งที่มาที่เคยใช้ (กดเพื่อเลือก):';
+    container.appendChild(label);
+
+    sources.forEach(src => {
+        const chip = document.createElement('span');
+        chip.className = 'lot-chip';
+        chip.innerHTML = `<i class="fa-solid fa-truck-field"></i> ${src}`;
+        chip.addEventListener('click', () => {
+            const input = document.getElementById(inputId);
+            if (input) input.value = src;
+            container.querySelectorAll('.lot-chip').forEach(c => c.classList.remove('selected'));
+            chip.classList.add('selected');
+        });
+        container.appendChild(chip);
+    });
+}
+
 function resetScannerUI() {
     cameraContainer.classList.remove('hidden');
     scanResults.classList.add('hidden');
@@ -1058,7 +1449,12 @@ function resetScannerUI() {
     captureBtn.innerHTML = '<i class="fa-solid fa-camera"></i> จับภาพข้อมูล';
     saveForm.reset();
     document.getElementById('scan-qty').value = "10";
-    
+    // ตั้งค่าแหล่งที่มาเริ่มต้นจากข้อมูลร้าน
+    if (state.profile && state.profile.supplier) {
+        document.getElementById('scan-source').value = state.profile.supplier;
+    }
+    renderSourceChips();
+
     startARSimulation(); 
 }
 
@@ -1113,7 +1509,14 @@ function initScannerLogic() {
 
                 const lotMatch = text.match(/LOT\s*[:\-]?\s*([A-Z0-9]+)/i);
                 if (lotMatch) detectedLot = lotMatch[1];
-                
+
+                // พยายามอ่านแหล่งที่มาจากฉลาก (MFG/ผู้ผลิต/จัดจำหน่ายโดย) ไม่งั้นใช้ค่าตั้งต้น
+                let detectedSource = currentARData.source;
+                const srcMatch = text.match(/(?:ผู้ผลิต|ผลิตโดย|จัดจำหน่ายโดย|MFG|MFD|by)\s*[:\-]?\s*(.+)/i);
+                if (srcMatch && srcMatch[1] && srcMatch[1].trim().length > 1) {
+                    detectedSource = srcMatch[1].trim().split('\n')[0].slice(0, 40);
+                }
+
                 cameraContainer.classList.add('hidden');
                 scanResults.classList.remove('hidden');
                 
@@ -1121,15 +1524,18 @@ function initScannerLogic() {
                 document.getElementById('scan-lot').value = detectedLot;
                 document.getElementById('scan-expiry').value = currentARData.expiry; 
                 document.getElementById('scan-qty').value = currentARData.qty;
+                document.getElementById('scan-source').value = detectedSource;
                 
-                // Populate lot datalist based on detected name
+                // Populate chips
                 renderLotChips();
+                renderSourceChips();
                 
                 preview.innerHTML = `
                     <div class="preview-ar-overlay">
-                        <div class="ar-box product" style="top: 30%; left: 10%; max-width:80%; word-break:break-all;"><i class="fa-solid fa-box"></i> ${detectedName}</div>
-                        <div class="ar-box lot" style="top: 50%; left: 20%;"><i class="fa-solid fa-barcode"></i> LOT: ${detectedLot}</div>
-                        <div class="ar-box expiry" style="top: 70%; left: 45%;"><i class="fa-solid fa-calendar-xmark"></i> EXP: ${currentARData.expiry}</div>
+                        <div class="ar-box product" style="top: 22%; left: 10%; max-width:80%; word-break:break-all;"><i class="fa-solid fa-box"></i> ${detectedName}</div>
+                        <div class="ar-box lot" style="top: 42%; left: 20%;"><i class="fa-solid fa-barcode"></i> LOT: ${detectedLot}</div>
+                        <div class="ar-box expiry" style="top: 60%; left: 45%;"><i class="fa-solid fa-calendar-xmark"></i> EXP: ${currentARData.expiry}</div>
+                        <div class="ar-box source" style="top: 78%; left: 12%; max-width:80%; word-break:break-all;"><i class="fa-solid fa-truck-field"></i> SRC: ${detectedSource}</div>
                     </div>
                 `;
                 
@@ -1142,7 +1548,9 @@ function initScannerLogic() {
                 document.getElementById('scan-lot').value = currentARData.lot;
                 document.getElementById('scan-expiry').value = currentARData.expiry;
                 document.getElementById('scan-qty').value = currentARData.qty;
+                document.getElementById('scan-source').value = currentARData.source;
                 renderLotChips();
+                renderSourceChips();
             }
         } else {
             preview.style.backgroundColor = '#ccc';
@@ -1162,6 +1570,7 @@ function initScannerLogic() {
         const expiry = document.getElementById('scan-expiry').value;
         const qty = parseInt(document.getElementById('scan-qty').value, 10);
         const slot = lot; // ล็อต และ ช่องจัดเก็บ เป็นอันเดียวกัน
+        const source = document.getElementById('scan-source').value.trim();
         
         const diffTime = new Date(expiry) - new Date();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -1170,8 +1579,9 @@ function initScannerLogic() {
         if(diffDays <= 0) status = 'red';
         else if (diffDays <= 7) status = 'yellow';
 
-        // Save the lot so it can be reused next time
+        // Save the lot & source so they can be reused next time
         saveKnownLot(lot);
+        saveKnownSource(source);
 
         // Merge if same product + lot + expiry already in this lot
         const existingItemIndex = state.inventory.findIndex(i => i.name === name && i.lot === lot && i.expiry === expiry);
@@ -1180,6 +1590,7 @@ function initScannerLogic() {
             // Update existing
             state.inventory[existingItemIndex].qty += qty;
             state.inventory[existingItemIndex].status = status;
+            if (source) state.inventory[existingItemIndex].source = source;
         } else {
             // Add new
             state.inventory.push({
@@ -1189,12 +1600,13 @@ function initScannerLogic() {
                 expiry,
                 qty,
                 status,
-                slot
+                slot,
+                source
             });
         }
         
         state.history.unshift({
-            text: `เติมสต็อก: ${name} (ล็อต ${lot}) จำนวน ${qty} ชิ้น`,
+            text: `เติมสต็อก: ${name} (ล็อต ${lot}) จำนวน ${qty} ชิ้น${source ? ' · จาก ' + source : ''}`,
             date: new Date().toLocaleString('th-TH')
         });
 
