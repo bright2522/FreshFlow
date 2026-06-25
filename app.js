@@ -58,15 +58,30 @@ function loadReceipts() {
 function persistReceipts() {
     localStorage.setItem('freshflow_receipts', JSON.stringify(state.receipts));
 }
-// คำนวณ VAT แบบ "ราคารวม VAT แล้ว" (ใบเสร็จไทยส่วนใหญ่) => VAT = total * 7/107
-function calcVatFromInclusive(total) {
-    const vat = total * VAT_RATE / (1 + VAT_RATE);
-    return {
-        total: total,
-        base: total - vat,
-        vat: vat
-    };
+// คำนวณ VAT แบบ "ตรงแปะ" ระดับสตางค์ (ทำงานด้วยจำนวนเต็มสตางค์ กันปัญหาทศนิยมลอย)
+// inclusive = true  -> ยอดที่กรอกรวม VAT แล้ว: VAT = ยอด × 7 ÷ 107
+// inclusive = false -> ยอดที่กรอกยังไม่รวม VAT (ฐานภาษี): VAT = ฐาน × 7%
+function calcVat(amount, inclusive = true) {
+    const a = Number(amount) || 0;
+    if (inclusive) {
+        const totalSt = Math.round(a * 100);            // สตางค์
+        const vatSt = Math.round(totalSt * 7 / 107);    // ปัดครึ่งขึ้นที่ระดับสตางค์
+        const baseSt = totalSt - vatSt;                 // ฐาน = ยอด - VAT (ตรงกันเป๊ะ)
+        return { total: totalSt / 100, base: baseSt / 100, vat: vatSt / 100, inclusive: true };
+    } else {
+        const baseSt = Math.round(a * 100);
+        const vatSt = Math.round(baseSt * 7 / 100);
+        const totalSt = baseSt + vatSt;
+        return { total: totalSt / 100, base: baseSt / 100, vat: vatSt / 100, inclusive: false };
+    }
 }
+// alias เดิม (ยังมีจุดที่เรียกใช้)
+function calcVatFromInclusive(total) { return calcVat(total, true); }
+
+// ปัดเงินให้เหลือ 2 ตำแหน่งแบบแม่นยำ (กันผลรวมทศนิยมลอย)
+function round2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
+// จัดรูปแบบเงินบาท 2 ตำแหน่งเสมอ
+function money(n) { return '฿' + round2(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
 // --- DISPOSITION KNOWLEDGE BASE (ใช้เป็นสมองของผู้ช่วย AI) ---
 const DISPOSITION_INFO = {
@@ -996,12 +1011,13 @@ function businessInsightReply(focusVat) {
     // สรุป VAT
     let total = 0, vat = 0;
     state.receipts.forEach(r => { total += r.total; vat += r.vat; });
-    const vatBlock = `🧾 **สรุป VAT**\n• ใบเสร็จ ${state.receipts.length} ใบ · ยอดซื้อรวม ฿${total.toLocaleString(undefined,{maximumFractionDigits:2})}\n• VAT 7% รวม ฿${vat.toLocaleString(undefined,{maximumFractionDigits:2})}`;
+    total = round2(total); vat = round2(vat);
+    const vatBlock = `🧾 **สรุป VAT**\n• ใบเสร็จ ${state.receipts.length} ใบ · ยอดซื้อรวม ${money(total)}\n• VAT 7% รวม ${money(vat)}`;
 
     if (focusVat) {
         return state.receipts.length
-            ? vatBlock + `\n\n(คำนวณแบบราคารวม VAT แล้ว: VAT = ยอด × 7 ÷ 107)`
-            : 'ยังไม่มีใบเสร็จในระบบครับ ไปที่แท็บ "ใบเสร็จ/VAT" แล้วกด "สแกนใบเสร็จ" เพื่อเริ่มบันทึก';
+            ? vatBlock + `\n\n(คำนวณระดับสตางค์ ปัดเศษ 2 ตำแหน่ง — ฐานภาษี + VAT = ยอดรวม ตรงเป๊ะทุกใบ)`
+            : 'ยังไม่มีใบเสร็จในระบบครับ ไปที่แท็บ "VAT" แล้วกด "สแกนใบเสร็จ" เพื่อเริ่มบันทึก';
     }
 
     // วิเคราะห์ความเสี่ยงสต็อก
@@ -1092,14 +1108,15 @@ function renderVatView() {
     locked.classList.add('hidden');
     content.classList.remove('hidden');
 
-    // สรุปยอด
+    // สรุปยอด (รวมแบบสตางค์ กันทศนิยมลอย)
     let totalSum = 0, vatSum = 0, baseSum = 0;
     state.receipts.forEach(r => { totalSum += r.total; vatSum += r.vat; baseSum += r.base; });
+    totalSum = round2(totalSum); vatSum = round2(vatSum); baseSum = round2(baseSum);
 
     document.getElementById('vat-stat-count').textContent = state.receipts.length.toLocaleString();
-    document.getElementById('vat-stat-total').textContent = '฿' + totalSum.toLocaleString(undefined, {maximumFractionDigits: 2});
-    document.getElementById('vat-stat-base').textContent = '฿' + baseSum.toLocaleString(undefined, {maximumFractionDigits: 2});
-    document.getElementById('vat-stat-vat').textContent = '฿' + vatSum.toLocaleString(undefined, {maximumFractionDigits: 2});
+    document.getElementById('vat-stat-total').textContent = money(totalSum);
+    document.getElementById('vat-stat-base').textContent = money(baseSum);
+    document.getElementById('vat-stat-vat').textContent = money(vatSum);
 
     // รายการใบเสร็จ
     const list = document.getElementById('receipt-list');
@@ -1113,8 +1130,8 @@ function renderVatView() {
             <tr>
                 <td data-label="เลขที่" style="font-family:monospace; color:var(--text-muted);">${r.ref}</td>
                 <td data-label="ผู้ขาย">${r.vendor || '-'}</td>
-                <td data-label="ยอดรวม" style="font-weight:600;">฿${r.total.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-                <td data-label="VAT 7%" style="color:var(--primary-color); font-weight:700;">฿${r.vat.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                <td data-label="ยอดรวม" style="font-weight:600;">${money(r.total)}</td>
+                <td data-label="VAT 7%" style="color:var(--primary-color); font-weight:700;">${money(r.vat)}</td>
                 <td data-label="จัดการ" class="cell-actions">
                     <button class="btn btn-outline" style="padding:4px 10px; font-size:12px;" onclick="deleteReceipt('${r.id}')"><i class="fa-solid fa-trash"></i></button>
                 </td>
@@ -1136,6 +1153,8 @@ window.openReceiptScan = function() {
     document.getElementById('receipt-amount').value = '';
     document.getElementById('receipt-vendor').value = '';
     document.getElementById('receipt-ocr-status').textContent = '';
+    const prev = document.getElementById('vat-preview');
+    if (prev) prev.innerHTML = '';
 }
 window.closeReceiptScan = function() {
     document.getElementById('receipt-modal').classList.add('hidden');
@@ -1149,6 +1168,26 @@ function initReceiptScan() {
         if (e.target.id === 'receipt-modal') closeReceiptScan();
     });
 
+    // อัปเดตตัวอย่างการคำนวณ VAT แบบสด
+    const updatePreview = () => {
+        const el = document.getElementById('vat-preview');
+        if (!el) return;
+        const amt = parseFloat(document.getElementById('receipt-amount').value);
+        if (isNaN(amt) || amt <= 0) { el.innerHTML = ''; return; }
+        const incEl = document.querySelector('input[name="vat-mode"]:checked');
+        const inclusive = incEl ? incEl.value === 'inclusive' : true;
+        const v = calcVat(amt, inclusive);
+        el.innerHTML = `ฐานภาษี ${money(v.base)} + VAT 7% ${money(v.vat)} = ยอดรวม <strong>${money(v.total)}</strong>`;
+    };
+    document.getElementById('receipt-amount').addEventListener('input', updatePreview);
+    document.querySelectorAll('input[name="vat-mode"]').forEach(r => {
+        r.addEventListener('change', () => {
+            document.querySelectorAll('.vat-mode-opt').forEach(o => o.classList.remove('selected'));
+            r.closest('.vat-mode-opt').classList.add('selected');
+            updatePreview();
+        });
+    });
+
     // ปุ่มใช้ใบเสร็จตัวอย่าง (Demo)
     document.getElementById('receipt-demo-btn').addEventListener('click', () => {
         const vendors = ['บจก. ฟาร์มเฮ้าส์', 'ตัวแทนจำหน่ายนมหนองโพ', 'ตลาดไท', 'แม็คโคร สาขาลาดพร้าว', 'บจก. ฟู้ดส์ ซัพพลาย'];
@@ -1156,6 +1195,7 @@ function initReceiptScan() {
         document.getElementById('receipt-vendor').value = vendors[Math.floor(Math.random() * vendors.length)];
         document.getElementById('receipt-amount').value = amount.toFixed(2);
         document.getElementById('receipt-ocr-status').innerHTML = '<i class="fa-solid fa-circle-check" style="color:var(--success-color);"></i> เติมข้อมูลจากใบเสร็จตัวอย่างแล้ว ตรวจสอบแล้วกดบันทึก';
+        updatePreview();
     });
 
     // อัปโหลดรูปใบเสร็จ -> OCR อ่านยอดเงินจริง
@@ -1177,6 +1217,7 @@ function initReceiptScan() {
             statusEl.innerHTML = parsed.amount
                 ? `<i class="fa-solid fa-circle-check" style="color:var(--success-color);"></i> อ่านยอดเงินได้: ฿${parsed.amount.toFixed(2)} (ตรวจสอบก่อนบันทึกได้)`
                 : '<i class="fa-solid fa-triangle-exclamation" style="color:var(--warning-color);"></i> อ่านยอดเงินอัตโนมัติไม่ได้ กรุณากรอกเอง';
+            updatePreview();
         } catch (err) {
             console.error(err);
             statusEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="color:var(--danger-color);"></i> OCR ผิดพลาด กรุณากรอกยอดเงินเอง';
@@ -1190,8 +1231,10 @@ function initReceiptScan() {
         const vendor = document.getElementById('receipt-vendor').value.trim();
         if (isNaN(total) || total <= 0) { alert('กรุณากรอกยอดเงินให้ถูกต้อง'); return; }
 
-        const v = calcVatFromInclusive(total);
-        const seq = state.receipts.length + 1;
+        const incEl = document.querySelector('input[name="vat-mode"]:checked');
+        const inclusive = incEl ? incEl.value === 'inclusive' : true;
+        const v = calcVat(total, inclusive);
+
         state.receipts.unshift({
             id: 'rcp_' + Date.now(),
             ref: 'R' + String(Date.now()).slice(-6),
@@ -1199,6 +1242,7 @@ function initReceiptScan() {
             total: v.total,
             base: v.base,
             vat: v.vat,
+            inclusive: v.inclusive,
             createdAt: new Date().toLocaleString('th-TH')
         });
         persistReceipts();
