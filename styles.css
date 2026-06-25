@@ -370,3 +370,142 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
 /* ===== Receipt scan modal ===== */
 .receipt-actions { display: flex; gap: 10px; margin-bottom: 12px; }
 .receipt-ocr-status { font-size: 12px; color: var(--text-muted); min-height: 18px; margin-bottom: 8px; }
+
+/* ============================================================
+   MOBILE OPTIMISATION (phones ≤ 600px)
+   ============================================================ */
+@media (max-width: 600px) {
+
+    /* Prevent iOS auto-zoom on focus (inputs must be ≥16px) */
+    .form-group input,
+    .form-group select,
+    .select-input,
+    .search-box input,
+    .chat-input-row input,
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    input[type="password"] { font-size: 16px; }
+
+    /* Header: compact, no overflow */
+    .app-header { padding: 0 12px; height: 56px; gap: 6px; }
+    .logo h2 { font-size: 17px; }
+    .logo-icon { font-size: 19px; }
+    .user-profile { gap: 6px; }
+    .plan-badge { font-size: 10px; padding: 2px 7px; }
+    /* upgrade button becomes icon-only */
+    #header-upgrade-btn { padding: 8px 10px !important; }
+    #header-upgrade-btn .btn-text { display: none; }
+    .avatar { width: 30px; height: 30px; font-size: 12px; }
+    .btn-icon { font-size: 16px; padding: 4px; }
+
+    /* More breathing room for content */
+    .main-content { padding: 16px 12px 88px; }
+    .header-title h1 { font-size: 20px; }
+    .header-title p { font-size: 13px; }
+    .section-header { gap: 12px; margin-bottom: 18px; }
+    /* Section action buttons go full width & comfortable to tap */
+    .section-header > .btn { width: 100%; justify-content: center; padding: 12px; }
+
+    /* Cards & spacing */
+    .card { margin-bottom: 16px; }
+    .card-body { padding: 14px; }
+    .stat-card { padding: 16px; }
+
+    /* Search box full width */
+    .search-box { max-width: 100%; }
+
+    /* ---- Tables become stacked cards ---- */
+    .table-responsive { overflow-x: visible; }
+    .inventory-table thead { display: none; }
+    .inventory-table,
+    .inventory-table tbody,
+    .inventory-table tr,
+    .inventory-table td { display: block; width: 100%; }
+    .inventory-table tr {
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        margin-bottom: 12px;
+        padding: 6px 14px;
+        background: var(--bg-card);
+        box-shadow: var(--shadow-sm);
+    }
+    .inventory-table tr:hover { background: var(--bg-card); }
+    .inventory-table td {
+        border: none !important;
+        padding: 9px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        text-align: right;
+        border-bottom: 1px solid #f1f5f9 !important;
+    }
+    .inventory-table tr td:last-child { border-bottom: none !important; }
+    .inventory-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--text-muted);
+        font-size: 12px;
+        text-align: left;
+        flex-shrink: 0;
+    }
+    /* Action cell: buttons full width, easy to tap */
+    .inventory-table td.cell-actions { flex-direction: column; align-items: stretch; gap: 8px; padding-top: 12px; }
+    .inventory-table td.cell-actions::before { margin-bottom: 2px; }
+    .inventory-table td.cell-actions .btn {
+        width: 100%; justify-content: center;
+        padding: 10px !important; font-size: 14px !important; margin: 0 !important;
+    }
+
+    /* Dashboard action items: buttons full width */
+    .action-item .btn,
+    .action-item .btn-action { width: 100%; justify-content: center; padding: 11px; }
+    .op-card-actions { flex-direction: column; }
+    .op-card-actions .btn { width: 100%; justify-content: center; }
+
+    /* Modals: sit near bottom, full width, comfy */
+    .modal-overlay { padding: 0; align-items: flex-end; }
+    .modal-card {
+        max-width: 100%;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        max-height: 92vh;
+    }
+    .form-actions .btn { padding: 13px; }
+    /* Disposition options: one column for big tap targets */
+    .action-options { grid-template-columns: 1fr; }
+    .disp-option { padding: 13px; }
+
+    /* Onboarding choices stay 3-up but tighter */
+    .choice-card { padding: 12px 4px; font-size: 12px; }
+    .choice-card i { font-size: 18px; }
+    .login-card { padding: 28px 22px; }
+
+    /* Plans modal: comfortable scrolling */
+    .plans-card { max-height: 92vh; }
+    .plan-price { font-size: 26px; }
+
+    /* Receipt scan: stack the two source buttons */
+    .receipt-actions { flex-direction: column; }
+
+    /* Bottom nav: fit 5 items cleanly */
+    .bottom-nav .nav-links { height: 64px; }
+    .nav-icon { font-size: 19px; margin-bottom: 3px; }
+    .nav-text { font-size: 10px; white-space: nowrap; }
+
+    /* Chat panel: full-height sheet, FAB clear of nav */
+    .chat-fab { bottom: 78px; right: 16px; width: 52px; height: 52px; font-size: 20px; }
+    .chat-panel {
+        right: 0; left: 0; bottom: 0;
+        width: 100%; max-width: 100%;
+        height: 80vh; max-height: 80vh;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+}
+
+/* Extra-small phones (≤360px): trim a little more */
+@media (max-width: 360px) {
+    .nav-text { font-size: 9px; }
+    .header-title h1 { font-size: 18px; }
+    .stat-info .value { font-size: 20px; }
+}
