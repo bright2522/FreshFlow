@@ -409,13 +409,13 @@ function renderDashboard() {
     const breadAtRisk = riskItems.find(i => i.name.includes('ขนมปัง') && i.status === 'red');
     if(breadAtRisk) {
         actionList.innerHTML += `
-            <li class="action-item" style="background-color: #f5f3ff; border-radius: var(--radius-md); padding: 16px; margin-bottom: 12px; border: 1px solid #ddd6fe;">
+            <li class="action-item bundle-card">
                 <div class="action-details">
                     <span class="dot dot-purple"></span>
                     <div>
                         <h4><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--purple-color)"></i> AI จับคู่สินค้า (Cross-Selling)</h4>
                         <p><strong>${breadAtRisk.name} (Lot ${breadAtRisk.lot})</strong> มีจำนวน ${breadAtRisk.qty} ชิ้น</p>
-                        <span class="recommendation-text" style="color:var(--purple-color); background:#ede9fe;">
+                        <span class="recommendation-text rec-purple">
                             เสนอโปรโมชั่น: "ซื้อแยม 1 ขวด รับสิทธิ์ซื้อขนมปังลด 30%"
                         </span>
                         <div class="ai-reasoning">
@@ -456,7 +456,7 @@ function renderDashboard() {
     });
 
     if(actionList.innerHTML === '') {
-         actionList.innerHTML = '<li style="padding: 20px; text-align:center; color:#64748b;">ไม่มีสินค้าที่ต้องจัดการเร่งด่วน</li>';
+         actionList.innerHTML = '<li style="padding: 20px; text-align:center; color:var(--text-muted);">ไม่มีสินค้าที่ต้องจัดการเร่งด่วน</li>';
     }
 
     // 2. Render Smart Restock Predictions
@@ -1623,7 +1623,7 @@ function initScannerLogic() {
                 renderSourceChips();
             }
         } else {
-            preview.style.backgroundColor = '#ccc';
+            preview.style.backgroundColor = 'var(--bg-card)';
         }
     });
 
