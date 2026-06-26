@@ -196,17 +196,19 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
 .form-actions { display: flex; gap: 12px; margin-top: 24px; }
 .form-actions .btn { flex: 1; justify-content: center; }
 
-/* Bottom Navigation Bar */
-.bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background-color: var(--bg-nav); box-shadow: var(--shadow-nav); z-index: 100; border-top: 1px solid var(--border-color); }
-.bottom-nav .nav-links { list-style: none; display: flex; justify-content: space-around; align-items: center; height: 70px; max-width: 800px; margin: 0 auto; }
-.bottom-nav li { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; cursor: pointer; color: var(--text-muted); transition: all 0.2s; position: relative; }
-.bottom-nav li:hover { color: var(--primary-hover); }
+/* Bottom Navigation Bar — modern fluid pill style */
+.bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background-color: var(--bg-nav); box-shadow: var(--shadow-nav); z-index: 100; border-top: 1px solid var(--border-color); padding-bottom: env(safe-area-inset-bottom, 0); }
+.bottom-nav .nav-links { list-style: none; display: flex; justify-content: space-around; align-items: center; height: 72px; max-width: 720px; margin: 0 auto; padding: 0 6px; }
+.bottom-nav li { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; cursor: pointer; color: var(--text-muted); gap: 4px; -webkit-tap-highlight-color: transparent; }
+.bottom-nav li:hover { color: var(--primary-color); }
 .bottom-nav li.active { color: var(--primary-color); }
-.bottom-nav li.active::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 30px; height: 3px; background-color: var(--primary-color); border-radius: 0 0 3px 3px; }
-.nav-icon { font-size: 20px; margin-bottom: 4px; transition: transform 0.2s; }
-.bottom-nav li.active .nav-icon { transform: translateY(-2px); }
-.nav-text { font-size: 11px; font-weight: 500; }
-@media (min-width: 768px) { .bottom-nav, .bottom-nav .nav-links { height: 80px; } .nav-icon { font-size: 24px; margin-bottom: 6px; } .nav-text { font-size: 13px; } }
+/* active icon sits inside a filled, glowing capsule that springs in smoothly */
+.nav-icon { font-size: 18px; width: 56px; height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: transparent; transition: background-color .3s cubic-bezier(.4,0,.2,1), transform .4s cubic-bezier(.34,1.56,.64,1), color .25s, box-shadow .3s; }
+.bottom-nav li:active .nav-icon { transform: scale(.86); }
+.bottom-nav li.active .nav-icon { background: var(--primary-color); color: #fff; transform: translateY(-3px); box-shadow: 0 6px 16px rgba(59,130,246,0.45); }
+.nav-text { font-size: 11px; font-weight: 500; transition: font-weight .2s, opacity .2s; }
+.bottom-nav li.active .nav-text { font-weight: 700; }
+@media (min-width: 768px) { .bottom-nav .nav-links { height: 80px; } .nav-icon { font-size: 21px; width: 64px; height: 38px; } .nav-text { font-size: 13px; } }
 
 /* --- Edit Modal --- */
 .modal-overlay {
@@ -388,16 +390,17 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
     input[type="password"] { font-size: 16px; }
 
     /* Header: compact, no overflow */
-    .app-header { padding: 0 12px; height: 56px; gap: 6px; }
-    .logo h2 { font-size: 17px; }
-    .logo-icon { font-size: 19px; }
-    .user-profile { gap: 6px; }
+    .app-header { padding: 0 10px; height: 56px; gap: 4px; }
+    .logo h2 { font-size: 16px; }
+    .logo-icon { font-size: 18px; }
+    .user-profile { gap: 2px; }
     .plan-badge { font-size: 10px; padding: 2px 7px; }
     /* upgrade button becomes icon-only */
     #header-upgrade-btn { padding: 8px 10px !important; }
     #header-upgrade-btn .btn-text { display: none; }
-    .avatar { width: 30px; height: 30px; font-size: 12px; }
-    .btn-icon { font-size: 16px; padding: 4px; }
+    /* avatar is decorative — hide on phones to make room for theme toggle */
+    .avatar { display: none; }
+    .btn-icon { font-size: 17px; padding: 6px; }
 
     /* More breathing room for content */
     .main-content { padding: 16px 12px 88px; }
@@ -528,7 +531,7 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
 /* ============================================================
    DARK MODE
    ============================================================ */
-[data-theme="dark"] {
+html[data-theme="dark"] {
     --bg-main: #0f172a;
     --bg-card: #1e293b;
     --bg-nav: #1e293b;
