@@ -598,5 +598,5 @@ html[data-theme="dark"] {
 /* Cross-sell (bundle) card — was inline styles, now themeable */
 .bundle-card { background-color: #f5f3ff; border: 1px solid #ddd6fe; border-radius: var(--radius-md); padding: 16px; margin-bottom: 12px; }
 .rec-purple { color: var(--purple-color); background: #ede9fe; }
-html[data-theme="dark"] .bundle-card { background-color: rgba(139,92,246,0.12); border-color: rgba(139,92,246,0.4); }
-html[data-theme="dark"] .rec-purple { background: rgba(139,92,246,0.22); color: #c4b5fd; }
+html[data-theme="dark"] .bundle-card { background-color: rgba(139,92,246,0.14); border-color: rgba(139,92,246,0.5); }
+html[data-theme="dark"] .rec-purple { background: rgba(124,58,237,0.38); color: #ede9fe; border: 1px solid rgba(167,139,250,0.75); }
