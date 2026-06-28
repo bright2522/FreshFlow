@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Tesseract.js for Real Client-side OCR -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <link rel="stylesheet" href="styles.css?v=10">
+    <link rel="stylesheet" href="styles.css?v=11">
     <script>
         // ตั้งธีมก่อนเพจวาด เพื่อไม่ให้จอกระพริบ
         (function () {
@@ -311,69 +311,6 @@
                 </div>
             </section>
 
-            <!-- VAT / Receipts View (Business Plan) -->
-            <section id="vat-view" class="view-section">
-                <header class="section-header">
-                    <div class="header-title">
-                        <h1>ใบเสร็จ & ภาษีมูลค่าเพิ่ม (VAT)</h1>
-                        <p>สแกนใบเสร็จ แล้วให้ AI ดึงยอดและคำนวณ VAT 7% อัตโนมัติ</p>
-                    </div>
-                    <button class="btn btn-primary" onclick="openReceiptScan()"><i class="fa-solid fa-receipt"></i> สแกนใบเสร็จ</button>
-                </header>
-
-                <!-- Locked state (Free plan) -->
-                <div id="vat-locked" class="vat-locked hidden">
-                    <div class="lock-icon"><i class="fa-solid fa-lock"></i></div>
-                    <h2>ฟีเจอร์นี้อยู่ใน Business Plan</h2>
-                    <p>ปลดล็อกการคำนวณ VAT อัตโนมัติ, การสแกนใบเสร็จ และ AI วิเคราะห์ข้อมูลเชิงลึก<br>เริ่มต้นเพียง <strong>฿<span class="js-price">349</span>/เดือน</strong></p>
-                    <button class="btn btn-primary btn-block" style="max-width:260px;" onclick="openPlans()"><i class="fa-solid fa-crown"></i> ดูแพ็กเกจ & อัปเกรด</button>
-                </div>
-
-                <!-- Content (Business plan) -->
-                <div id="vat-content" class="hidden">
-                    <div class="stats-grid">
-                        <div class="stat-card stat-info-card">
-                            <div class="stat-icon"><i class="fa-solid fa-receipt"></i></div>
-                            <div class="stat-info"><h3>จำนวนใบเสร็จ</h3><p class="value" id="vat-stat-count">0</p></div>
-                        </div>
-                        <div class="stat-card stat-info-card">
-                            <div class="stat-icon"><i class="fa-solid fa-sack-dollar"></i></div>
-                            <div class="stat-info"><h3>ยอดซื้อรวม</h3><p class="value" id="vat-stat-total">฿0</p></div>
-                        </div>
-                        <div class="stat-card stat-success">
-                            <div class="stat-icon"><i class="fa-solid fa-calculator"></i></div>
-                            <div class="stat-info"><h3>ฐานภาษี (ก่อน VAT)</h3><p class="value" id="vat-stat-base">฿0</p></div>
-                        </div>
-                        <div class="stat-card stat-warning">
-                            <div class="stat-icon"><i class="fa-solid fa-percent"></i></div>
-                            <div class="stat-info"><h3>VAT 7% รวม</h3><p class="value" id="vat-stat-vat">฿0</p></div>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-header">
-                            <h2>รายการใบเสร็จ</h2>
-                            <span class="badge bg-blue">คำนวณแบบรวม VAT</span>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="inventory-table">
-                                    <thead>
-                                        <tr>
-                                            <th>เลขที่</th>
-                                            <th>ผู้ขาย</th>
-                                            <th>ยอดรวม</th>
-                                            <th>VAT 7%</th>
-                                            <th>จัดการ</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="receipt-list"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
         </main>
 
         <!-- Edit Inventory Modal -->
@@ -457,8 +394,6 @@
                             <li><i class="fa-solid fa-check"></i> สแกนรับเข้า + จัดการคลังสินค้า</li>
                             <li><i class="fa-solid fa-check"></i> ระบบดำเนินการ & ผู้ช่วย AI พื้นฐาน</li>
                             <li><i class="fa-solid fa-check"></i> บันทึกแหล่งที่มาสินค้า</li>
-                            <li class="muted"><i class="fa-solid fa-xmark"></i> คำนวณ VAT อัตโนมัติ</li>
-                            <li class="muted"><i class="fa-solid fa-xmark"></i> สแกนใบเสร็จ</li>
                             <li class="muted"><i class="fa-solid fa-xmark"></i> AI วิเคราะห์ข้อมูลเชิงลึก</li>
                         </ul>
                         <button class="btn btn-outline btn-block" onclick="downgradeToFree()">ใช้แพ็กเกจ Free</button>
@@ -469,61 +404,14 @@
                         <div class="plan-price">฿<span class="js-price">349</span><span>/เดือน</span></div>
                         <ul class="plan-features">
                             <li><i class="fa-solid fa-check"></i> ทุกอย่างใน Free</li>
-                            <li><i class="fa-solid fa-star" style="color:var(--warning-color);"></i> <strong>คำนวณ VAT อัตโนมัติ</strong> — AI ดึง 7% ทุกใบเสร็จ</li>
-                            <li><i class="fa-solid fa-star" style="color:var(--warning-color);"></i> <strong>สแกนใบเสร็จ</strong> (Demo + OCR จริง)</li>
                             <li><i class="fa-solid fa-star" style="color:var(--warning-color);"></i> <strong>AI วิเคราะห์ข้อมูล</strong> เชิงลึกขึ้น</li>
                             <li><i class="fa-solid fa-check"></i> สรุป waste rate & ความเสี่ยงตามซัพพลายเออร์</li>
+                            <li><i class="fa-solid fa-check"></i> แนะนำการสั่งซื้อ & กลยุทธ์ระบายสินค้าแม่นขึ้น</li>
                         </ul>
                         <button class="btn btn-primary btn-block" onclick="upgradeToBusiness()"><i class="fa-solid fa-crown"></i> อัปเกรดเป็น Business</button>
                     </div>
                 </div>
                 <p class="plans-note">* เวอร์ชันสาธิต: การอัปเกรดเป็นการจำลองเพื่อทดสอบฟีเจอร์ ยังไม่มีการตัดเงินจริง</p>
-            </div>
-        </div>
-
-        <!-- Receipt Scan Modal -->
-        <div id="receipt-modal" class="modal-overlay hidden">
-            <div class="modal-card">
-                <div class="modal-header">
-                    <h3><i class="fa-solid fa-receipt"></i> สแกนใบเสร็จ</h3>
-                    <button type="button" class="modal-close" onclick="closeReceiptScan()"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-                <form class="scan-form" id="receipt-form">
-                    <div class="receipt-actions">
-                        <label class="btn btn-outline" style="flex:1; justify-content:center; cursor:pointer;">
-                            <i class="fa-solid fa-camera"></i> อัปโหลด/ถ่ายรูปใบเสร็จ
-                            <input type="file" id="receipt-file" accept="image/*" capture="environment" style="display:none;" />
-                        </label>
-                        <button type="button" class="btn btn-outline" id="receipt-demo-btn" style="flex:1; justify-content:center;"><i class="fa-solid fa-wand-magic-sparkles"></i> ใบเสร็จตัวอย่าง</button>
-                    </div>
-                    <p id="receipt-ocr-status" class="receipt-ocr-status"></p>
-                    <div class="form-group">
-                        <label>ผู้ขาย / ร้านค้า</label>
-                        <input type="text" id="receipt-vendor" placeholder="เช่น บจก. ฟาร์มเฮ้าส์" />
-                    </div>
-                    <div class="form-group">
-                        <label>ยอดเงินในใบเสร็จ (บาท)</label>
-                        <input type="number" id="receipt-amount" step="0.01" min="0" placeholder="เช่น 1070.00" required />
-                    </div>
-                    <div class="form-group">
-                        <label>ยอดที่กรอกนี้</label>
-                        <div class="vat-mode-toggle">
-                            <label class="vat-mode-opt selected">
-                                <input type="radio" name="vat-mode" value="inclusive" checked />
-                                <span>รวม VAT แล้ว</span>
-                            </label>
-                            <label class="vat-mode-opt">
-                                <input type="radio" name="vat-mode" value="exclusive" />
-                                <span>ยังไม่รวม VAT</span>
-                            </label>
-                        </div>
-                        <p id="vat-preview" class="vat-preview"></p>
-                    </div>
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-outline" onclick="closeReceiptScan()">ยกเลิก</button>
-                        <button type="submit" class="btn btn-primary">บันทึก & คำนวณ VAT</button>
-                    </div>
-                </form>
             </div>
         </div>
 
@@ -564,10 +452,6 @@
                     <i class="fa-solid fa-boxes-stacked nav-icon"></i>
                     <span class="nav-text">คลังสินค้า</span>
                 </li>
-                <li data-view="vat">
-                    <i class="fa-solid fa-receipt nav-icon"></i>
-                    <span class="nav-text">VAT</span>
-                </li>
                 <li data-view="actions">
                     <i class="fa-solid fa-clock-rotate-left nav-icon"></i>
                     <span class="nav-text">ประวัติ</span>
@@ -576,6 +460,6 @@
         </nav>
     </div>
 
-    <script src="app.js?v=9"></script>
+    <script src="app.js?v=11"></script>
 </body>
 </html>
