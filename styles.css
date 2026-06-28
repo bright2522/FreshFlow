@@ -363,15 +363,7 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
 .plan-features li.muted i { color: #cbd5e1; }
 .plans-note { font-size: 11px; color: var(--text-muted); text-align: center; padding: 0 20px 18px; }
 
-/* ===== VAT locked state ===== */
-.vat-locked { background: var(--bg-card); border: 1px dashed var(--border-color); border-radius: var(--radius-lg); padding: 48px 24px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.vat-locked .lock-icon { width: 64px; height: 64px; border-radius: 50%; background: #fef3c7; color: var(--warning-color); display: flex; align-items: center; justify-content: center; font-size: 26px; }
-.vat-locked h2 { font-size: 20px; }
-.vat-locked p { color: var(--text-muted); font-size: 14px; line-height: 1.6; }
 
-/* ===== Receipt scan modal ===== */
-.receipt-actions { display: flex; gap: 10px; margin-bottom: 12px; }
-.receipt-ocr-status { font-size: 12px; color: var(--text-muted); min-height: 18px; margin-bottom: 8px; }
 
 /* ============================================================
    MOBILE OPTIMISATION (phones ≤ 600px)
@@ -488,8 +480,6 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
     .plans-card { max-height: 92vh; }
     .plan-price { font-size: 26px; }
 
-    /* Receipt scan: stack the two source buttons */
-    .receipt-actions { flex-direction: column; }
 
     /* Bottom nav: fit 5 items cleanly */
     .bottom-nav .nav-links { height: 64px; }
@@ -513,15 +503,6 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
     .stat-info .value { font-size: 20px; }
 }
 
-/* ===== VAT mode toggle (receipt modal) ===== */
-.vat-mode-toggle { display: flex; gap: 8px; }
-.vat-mode-opt { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; border: 2px solid var(--border-color); border-radius: var(--radius-md); cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s; }
-.vat-mode-opt input { display: none; }
-.vat-mode-opt:hover { border-color: var(--primary-color); }
-.vat-mode-opt.selected { border-color: var(--primary-color); background: #eff6ff; color: var(--primary-color); }
-.vat-preview { margin-top: 10px; font-size: 13px; color: var(--text-muted); background: #f8fafc; border-radius: var(--radius-md); padding: 10px 12px; min-height: 0; line-height: 1.5; }
-.vat-preview:empty { display: none; }
-.vat-preview strong { color: var(--text-main); }
 
 /* แหล่งที่มาใต้ชื่อสินค้าในหน้าคลัง */
 .item-source { font-size: 12px; font-weight: 400; color: var(--text-muted); margin-top: 3px; display: flex; align-items: center; gap: 5px; }
@@ -555,8 +536,7 @@ html[data-theme="dark"] {
 [data-theme="dark"] .image-preview { background-color: #334155; }
 [data-theme="dark"] .modal-close:hover { background: #334155; }
 [data-theme="dark"] .action-item-summary { background: #0f172a; }
-[data-theme="dark"] .ai-reasoning,
-[data-theme="dark"] .vat-preview { background: #0f172a; }
+[data-theme="dark"] .ai-reasoning { background: #0f172a; }
 [data-theme="dark"] .chat-messages { background: #0f172a; }
 [data-theme="dark"] .chat-bot { background: #1e293b; border-color: #334155; }
 [data-theme="dark"] .chat-input-row { background: var(--bg-card); }
@@ -577,7 +557,6 @@ html[data-theme="dark"] {
 [data-theme="dark"] .recommendation-text,
 [data-theme="dark"] .action-ai-rec,
 [data-theme="dark"] .disp-option.selected,
-[data-theme="dark"] .vat-mode-opt.selected,
 [data-theme="dark"] .choice-card.selected { background: rgba(59,130,246,0.15); }
 [data-theme="dark"] .recommendation-warning { background: rgba(239,68,68,0.18); color: #fca5a5; }
 [data-theme="dark"] .choice-card.selected { color: #93c5fd; }
@@ -591,8 +570,6 @@ html[data-theme="dark"] {
 
 /* Misc */
 [data-theme="dark"] .btn-outline:hover { background: #334155; border-color: var(--text-muted); }
-[data-theme="dark"] .vat-locked .lock-icon { background: rgba(245,158,11,0.18); }
-[data-theme="dark"] .vat-locked { border-color: #334155; }
 [data-theme="dark"] .inventory-table tr { box-shadow: var(--shadow-sm); }
 
 /* Cross-sell (bundle) card — was inline styles, now themeable */
