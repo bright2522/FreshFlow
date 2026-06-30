@@ -141,9 +141,10 @@ body { background-color: var(--bg-main); color: var(--text-main); display: flex;
 .action-details h4 { font-size: 15px; font-weight: 600; margin-bottom: 6px; line-height: 1.4; }
 .action-details p { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 4px; }
 .recommendation-text { font-size: 13px; font-weight: 600; color: var(--primary-color); background: #eff6ff; padding: 6px 10px; border-radius: 6px; display: inline-block; margin-top: 4px;}
-.recommendation-warning { color: var(--danger-color); background: #fee2e2; }
-.ai-reasoning { background: #f8fafc; border-left: 3px solid var(--primary-color); padding: 8px 12px; font-size: 12px; color: var(--text-muted); margin-top: 8px; border-radius: 0 4px 4px 0; display:flex; gap:6px; align-items:flex-start;}
-.ai-reasoning i { color: var(--primary-color); margin-top: 2px;}
+.recommendation-warning { color: #b45309; background: #fef3c7; }
+.ai-reasoning { background: #f1f5f9; border-left: 4px solid var(--primary-color); padding: 11px 14px; font-size: 13.5px; color: var(--text-main); margin-top: 10px; border-radius: 0 8px 8px 0; display:flex; gap:9px; align-items:flex-start; line-height: 1.55;}
+.ai-reasoning i { color: var(--primary-color); margin-top: 3px; font-size: 15px; }
+.ai-reasoning strong { color: var(--primary-color); }
 
 /* Table */
 .table-responsive { overflow-x: auto; }
@@ -536,7 +537,7 @@ html[data-theme="dark"] {
 [data-theme="dark"] .image-preview { background-color: #334155; }
 [data-theme="dark"] .modal-close:hover { background: #334155; }
 [data-theme="dark"] .action-item-summary { background: #0f172a; }
-[data-theme="dark"] .ai-reasoning { background: #0f172a; }
+[data-theme="dark"] .ai-reasoning { background: #243044; color: #e2e8f0; }
 [data-theme="dark"] .chat-messages { background: #0f172a; }
 [data-theme="dark"] .chat-bot { background: #1e293b; border-color: #334155; }
 [data-theme="dark"] .chat-input-row { background: var(--bg-card); }
@@ -558,7 +559,7 @@ html[data-theme="dark"] {
 [data-theme="dark"] .action-ai-rec,
 [data-theme="dark"] .disp-option.selected,
 [data-theme="dark"] .choice-card.selected { background: rgba(59,130,246,0.15); }
-[data-theme="dark"] .recommendation-warning { background: rgba(239,68,68,0.18); color: #fca5a5; }
+[data-theme="dark"] .recommendation-warning { background: rgba(245,158,11,0.2); color: #fcd34d; }
 [data-theme="dark"] .choice-card.selected { color: #93c5fd; }
 [data-theme="dark"] .choice-card.selected i { color: #93c5fd; }
 
