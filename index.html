@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Tesseract.js for Real Client-side OCR -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <link rel="stylesheet" href="styles.css?v=11">
+    <link rel="stylesheet" href="styles.css?v=12">
     <script>
         // ตั้งธีมก่อนเพจวาด เพื่อไม่ให้จอกระพริบ
         (function () {
@@ -123,6 +123,22 @@
                         <p>ภาพรวมคลังสินค้า พยากรณ์การสั่งซื้อ และกลยุทธ์ระบายสินค้า</p>
                     </div>
                 </header>
+
+                <!-- Hero: บอกว่าควรโฟกัสอะไรก่อน + ปุ่มสแกนเด่นตรงกลาง -->
+                <section class="dash-hero">
+                    <span class="hero-eyebrow"><i class="fa-solid fa-wand-magic-sparkles"></i> สิ่งที่ควรทำตอนนี้</span>
+                    <h2 id="hero-focus-msg" class="hero-focus">กำลังตรวจสอบสต็อก...</h2>
+                    <p id="hero-focus-sub" class="hero-focus-sub"></p>
+                    <button class="hero-scan-cta" onclick="switchView('inbound')">
+                        <span class="hero-scan-ic"><i class="fa-solid fa-camera"></i></span>
+                        <span class="hero-scan-textwrap">
+                            <span class="hero-scan-label">สแกนรับเข้าสินค้า</span>
+                            <span class="hero-scan-sub">แตะเพื่อเริ่มสแกนด้วยกล้อง</span>
+                        </span>
+                        <i class="fa-solid fa-arrow-right hero-scan-arrow"></i>
+                    </button>
+                    <button id="hero-focus-action" class="hero-focus-action hidden" onclick="goToFocus()"></button>
+                </section>
 
                 <div class="stats-grid">
                     <div class="stat-card stat-success">
@@ -460,6 +476,6 @@
         </nav>
     </div>
 
-    <script src="app.js?v=11"></script>
+    <script src="app.js?v=12"></script>
 </body>
 </html>
