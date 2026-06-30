@@ -347,6 +347,47 @@ window.switchView = function(viewId) {
 }
 
 // --- RENDERING LOGIC ---
+let heroFocusTarget = 'inventory';
+
+// บอกผู้ใช้ว่าควรโฟกัสอะไรก่อนบนแดชบอร์ด
+function renderHeroFocus() {
+    const hero = document.querySelector('.dash-hero');
+    const msgEl = document.getElementById('hero-focus-msg');
+    const subEl = document.getElementById('hero-focus-sub');
+    const actBtn = document.getElementById('hero-focus-action');
+    if (!hero || !msgEl) return;
+
+    const reds = state.inventory.filter(i => i.status === 'red').sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
+    const yellows = state.inventory.filter(i => i.status === 'yellow').sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
+
+    hero.classList.remove('hero-state-red', 'hero-state-yellow', 'hero-state-ok');
+
+    if (reds.length > 0) {
+        hero.classList.add('hero-state-red');
+        msgEl.textContent = `🔴 มีสินค้าวิกฤต ${reds.length} รายการ ต้องจัดการด่วน`;
+        subEl.textContent = `ด่วนสุด: ${reds[0].name} (ล็อต ${reds[0].slot || reds[0].lot} · หมดอายุ ${reds[0].expiry})`;
+        heroFocusTarget = 'inventory';
+        actBtn.textContent = 'ไปจัดการสินค้าวิกฤต';
+        actBtn.classList.remove('hidden');
+    } else if (yellows.length > 0) {
+        hero.classList.add('hero-state-yellow');
+        msgEl.textContent = `🟡 มีสินค้าเสี่ยง ${yellows.length} รายการ ควรเร่งระบาย`;
+        subEl.textContent = `ใกล้หมดอายุสุด: ${yellows[0].name} (หมดอายุ ${yellows[0].expiry})`;
+        heroFocusTarget = 'inventory';
+        actBtn.textContent = 'ดูสินค้าเสี่ยง';
+        actBtn.classList.remove('hidden');
+    } else {
+        hero.classList.add('hero-state-ok');
+        msgEl.textContent = '✅ สต็อกทุกอย่างปลอดภัย';
+        subEl.textContent = 'ไม่มีสินค้าเร่งด่วน — สแกนรับเข้าสินค้าใหม่ได้เลย';
+        actBtn.classList.add('hidden');
+    }
+}
+
+window.goToFocus = function() {
+    switchView(heroFocusTarget || 'inventory');
+}
+
 function renderDashboard() {
     let totalGreen = 0, totalYellow = 0, totalRed = 0, grandTotal = 0;
     
@@ -361,6 +402,9 @@ function renderDashboard() {
     document.getElementById('stat-yellow').textContent = totalYellow.toLocaleString();
     document.getElementById('stat-red').textContent = totalRed.toLocaleString();
     document.getElementById('stat-total').textContent = grandTotal.toLocaleString();
+
+    // --- Hero focus: บอกว่าควรโฟกัสอะไรก่อน ---
+    renderHeroFocus();
 
     // 1. Render Action Engine Recommendations
     const actionList = document.getElementById('dashboard-actions-list');
