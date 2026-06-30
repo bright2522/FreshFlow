@@ -577,3 +577,60 @@ html[data-theme="dark"] {
 .rec-purple { color: var(--purple-color); background: #ede9fe; }
 html[data-theme="dark"] .bundle-card { background-color: rgba(139,92,246,0.14); border-color: rgba(139,92,246,0.5); }
 html[data-theme="dark"] .rec-purple { background: rgba(124,58,237,0.38); color: #ede9fe; border: 1px solid rgba(167,139,250,0.75); }
+
+/* ===== Dashboard Hero (focus + prominent scan) ===== */
+.dash-hero {
+    background: linear-gradient(135deg, var(--primary-color), var(--purple-color));
+    border-radius: var(--radius-lg);
+    padding: 26px 22px;
+    margin-bottom: 24px;
+    color: #fff;
+    text-align: center;
+    box-shadow: var(--shadow-md);
+    transition: background 0.4s ease;
+}
+.dash-hero.hero-state-red { background: linear-gradient(135deg, #f43f5e, #b91c1c); }
+.dash-hero.hero-state-yellow { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.dash-hero.hero-state-ok { background: linear-gradient(135deg, #10b981, #0d9488); }
+.hero-eyebrow { font-size: 12px; font-weight: 600; opacity: 0.92; letter-spacing: 0.4px; display: inline-flex; gap: 6px; align-items: center; }
+.hero-focus { font-size: 22px; font-weight: 800; margin: 10px 0 4px; line-height: 1.32; }
+.hero-focus-sub { font-size: 13px; opacity: 0.92; margin-bottom: 22px; }
+.hero-focus-sub:empty { margin-bottom: 16px; }
+
+/* Big central scan button */
+.hero-scan-cta {
+    display: inline-flex; align-items: center; gap: 16px;
+    background: #fff; border: none; border-radius: 18px;
+    padding: 18px 30px; cursor: pointer; margin: 4px auto 0;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.2);
+    transition: transform 0.2s, box-shadow 0.2s;
+    animation: heroGlow 2.4s ease-in-out infinite;
+}
+.hero-scan-cta:hover { transform: translateY(-3px); box-shadow: 0 16px 36px rgba(0,0,0,0.3); }
+.hero-scan-cta:active { transform: scale(0.97); }
+.hero-scan-ic { width: 54px; height: 54px; border-radius: 14px; background: linear-gradient(135deg, var(--primary-color), var(--purple-color)); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 25px; flex-shrink: 0; }
+.hero-scan-textwrap { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.25; }
+.hero-scan-label { font-size: 18px; font-weight: 800; color: #1e293b; }
+.hero-scan-sub { font-size: 12px; font-weight: 500; color: #64748b; }
+.hero-scan-arrow { color: var(--primary-color); font-size: 16px; margin-left: 6px; }
+@keyframes heroGlow {
+    0%, 100% { box-shadow: 0 10px 28px rgba(0,0,0,0.2); }
+    50% { box-shadow: 0 10px 34px rgba(255,255,255,0.6); }
+}
+
+/* Secondary focus action (jump to what needs attention) */
+.hero-focus-action {
+    display: inline-block; margin-top: 14px;
+    background: rgba(255,255,255,0.18); color: #fff;
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 999px; padding: 9px 22px; font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: background 0.2s;
+}
+.hero-focus-action:hover { background: rgba(255,255,255,0.3); }
+.hero-focus-action.hidden { display: none; }
+
+@media (max-width: 600px) {
+    .dash-hero { padding: 22px 16px; }
+    .hero-focus { font-size: 19px; }
+    .hero-scan-cta { width: 100%; justify-content: center; padding: 16px; }
+}
