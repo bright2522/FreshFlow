@@ -212,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initApp() {
+    refreshInventoryStatuses();
     state.knownLots = loadKnownLots();
     state.profile = loadProfile();
     state.knownSources = loadKnownSources();
@@ -414,6 +415,8 @@ function renderDashboard() {
     
     const breadAtRisk = riskItems.find(i => i.name.includes('ขนมปัง') && i.status === 'red');
     if(breadAtRisk) {
+        const breadDays = Math.ceil((new Date(breadAtRisk.expiry) - new Date()) / (1000 * 60 * 60 * 24));
+        const breadWhen = breadDays <= 0 ? 'หมดอายุแล้ว' : `เหลืออีกเพียง ${breadDays} วัน`;
         actionList.innerHTML += `
             <li class="action-item bundle-card">
                 <div class="action-details">
@@ -426,7 +429,7 @@ function renderDashboard() {
                         </span>
                         <div class="ai-reasoning">
                             <i class="fa-solid fa-lightbulb"></i> 
-                            <span><strong>เหตุผล AI:</strong> ขนมปังล็อตนี้จะหมดอายุในอีกไม่ถึง 1 วัน เสี่ยงสูญเสีย 100% จึงเสนอจับคู่กับ "แยม" ซึ่งเป็นสินค้าขายดี เพื่อเร่งระบายออกอย่างรวดเร็ว</span>
+                            <span><strong>เหตุผล AI:</strong> ขนมปังล็อตนี้${breadWhen} เสี่ยงสูญเสีย 100% จึงเสนอจับคู่กับ "แยม" ซึ่งเป็นสินค้าขายดี เพื่อเร่งระบายออกอย่างรวดเร็ว</span>
                         </div>
                     </div>
                 </div>
@@ -440,7 +443,7 @@ function renderDashboard() {
 
         const actionText = item.status === 'red' ? 'ส่งบริจาค หรือ นำไปทำลาย' : 'จัดโปรโมชั่นลดราคาด่วน 20%';
         const btnText = item.status === 'red' ? 'ดำเนินการ' : 'ลดราคา 20%';
-        const reasonText = item.status === 'red' ? `สินค้าอยู่ในช่วงวิกฤต (หมดอายุ ${item.expiry}) หากปล่อยไว้จะเน่าเสียและเปลืองพื้นที่จัดเก็บ (Slot ${item.slot})` : `อายุการเก็บรักษาน้อยกว่า 7 วัน การลดราคา 20% จะช่วยเพิ่มโอกาสขายออกก่อนถึงจุดวิกฤต 80%`;
+        const reasonText = item.status === 'red' ? `สินค้าอยู่ในช่วงวิกฤต (หมดอายุ ${item.expiry}) หากปล่อยไว้จะเน่าเสียและเปลืองพื้นที่จัดเก็บ (Slot ${item.slot})` : `เหลืออายุ 8–30 วัน เริ่มเข้าโซนเสี่ยง การลดราคา 20% ช่วยเพิ่มโอกาสขายออกก่อนถึงจุดวิกฤตได้มาก`;
         
         actionList.innerHTML += `
             <li class="action-item">
@@ -644,9 +647,23 @@ let editingItemId = null;
 
 function computeStatus(expiry) {
     const diffDays = Math.ceil((new Date(expiry) - new Date()) / (1000 * 60 * 60 * 24));
-    if (diffDays <= 0) return 'red';
-    if (diffDays <= 7) return 'yellow';
-    return 'green';
+    if (diffDays <= 7) return 'red';     // หมดอายุ หรือ ≤ 7 วัน
+    if (diffDays <= 30) return 'yellow'; // 8–30 วัน
+    return 'green';                      // > 30 วัน
+}
+
+// ตั้งวันหมดอายุของข้อมูลตัวอย่างให้สัมพันธ์กับ "วันนี้" เสมอ (เดโมจะมีทั้งแดง/เหลือง/เขียวพอดี)
+// แล้วคำนวณสถานะใหม่ตามเกณฑ์ปัจจุบันให้สินค้าทุกชิ้น
+function refreshInventoryStatuses() {
+    const seedOffsets = { 1: 3, 2: 56, 3: 5, 4: 20, 5: 194 }; // วัน (จากวันนี้)
+    state.inventory.forEach(i => {
+        if (seedOffsets[i.id] !== undefined) {
+            const d = new Date();
+            d.setDate(d.getDate() + seedOffsets[i.id]);
+            i.expiry = d.toISOString().split('T')[0];
+        }
+        i.status = computeStatus(i.expiry);
+    });
 }
 
 window.openEditModal = function(id) {
@@ -1443,12 +1460,7 @@ function initScannerLogic() {
         const slot = lot; // ล็อต และ ช่องจัดเก็บ เป็นอันเดียวกัน
         const source = document.getElementById('scan-source').value.trim();
         
-        const diffTime = new Date(expiry) - new Date();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        let status = 'green';
-        if(diffDays <= 0) status = 'red';
-        else if (diffDays <= 7) status = 'yellow';
+        const status = computeStatus(expiry);
 
         // Save the lot & source so they can be reused next time
         saveKnownLot(lot);
