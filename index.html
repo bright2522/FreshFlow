@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Tesseract.js for Real Client-side OCR -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <link rel="stylesheet" href="styles.css?v=12">
+    <link rel="stylesheet" href="styles.css?v=13">
     <script>
         // ตั้งธีมก่อนเพจวาด เพื่อไม่ให้จอกระพริบ
         (function () {
@@ -146,7 +146,7 @@
                         <div class="stat-info">
                             <h3>ปลอดภัย (ชิ้น)</h3>
                             <p class="value" id="stat-green">0</p>
-                            <span class="tag-label tag-green">หมดอายุ > 7 วัน</span>
+                            <span class="tag-label tag-green">หมดอายุ > 30 วัน</span>
                         </div>
                     </div>
                     <div class="stat-card stat-warning">
@@ -154,7 +154,7 @@
                         <div class="stat-info">
                             <h3>มีความเสี่ยง (ชิ้น)</h3>
                             <p class="value" id="stat-yellow">0</p>
-                            <span class="tag-label tag-yellow">หมดอายุใน 1-7 วัน</span>
+                            <span class="tag-label tag-yellow">หมดอายุใน 8-30 วัน</span>
                         </div>
                     </div>
                     <div class="stat-card stat-danger">
@@ -162,7 +162,7 @@
                         <div class="stat-info">
                             <h3>วิกฤต (ชิ้น)</h3>
                             <p class="value" id="stat-red">0</p>
-                            <span class="tag-label tag-red">หมดอายุหรือ < 1 วัน</span>
+                            <span class="tag-label tag-red">หมดอายุ หรือ < 7 วัน</span>
                         </div>
                     </div>
                     <div class="stat-card stat-info-card">
@@ -476,6 +476,6 @@
         </nav>
     </div>
 
-    <script src="app.js?v=12"></script>
+    <script src="app.js?v=13"></script>
 </body>
 </html>
