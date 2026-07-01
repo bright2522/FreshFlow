@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Tesseract.js for Real Client-side OCR -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <link rel="stylesheet" href="styles.css?v=13">
+    <link rel="stylesheet" href="styles.css?v=14">
     <script>
         // ตั้งธีมก่อนเพจวาด เพื่อไม่ให้จอกระพริบ
         (function () {
@@ -119,45 +119,21 @@
             <section id="dashboard-view" class="view-section active">
                 <header class="section-header">
                     <div class="header-title">
-                        <h1>แดชบอร์ดอัจฉริยะ</h1>
-                        <p>ภาพรวมคลังสินค้า พยากรณ์การสั่งซื้อ และกลยุทธ์ระบายสินค้า</p>
+                        <h1>หน้าหลัก</h1>
+                        <p>ภาพรวมสต็อกทั้งหมดในระบบ — แตะการ์ดสีเพื่อดูรายการสินค้า</p>
                     </div>
                 </header>
 
-                <!-- Hero: บอกว่าควรโฟกัสอะไรก่อน + ปุ่มสแกนเด่นตรงกลาง -->
-                <section class="dash-hero">
-                    <span class="hero-eyebrow"><i class="fa-solid fa-wand-magic-sparkles"></i> สิ่งที่ควรทำตอนนี้</span>
-                    <h2 id="hero-focus-msg" class="hero-focus">กำลังตรวจสอบสต็อก...</h2>
-                    <p id="hero-focus-sub" class="hero-focus-sub"></p>
-                    <button class="hero-scan-cta" onclick="switchView('inbound')">
-                        <span class="hero-scan-ic"><i class="fa-solid fa-camera"></i></span>
-                        <span class="hero-scan-textwrap">
-                            <span class="hero-scan-label">สแกนรับเข้าสินค้า</span>
-                            <span class="hero-scan-sub">แตะเพื่อเริ่มสแกนด้วยกล้อง</span>
-                        </span>
-                        <i class="fa-solid fa-arrow-right hero-scan-arrow"></i>
-                    </button>
-                    <button id="hero-focus-action" class="hero-focus-action hidden" onclick="goToFocus()"></button>
-                </section>
-
                 <div class="stats-grid">
-                    <div class="stat-card stat-success">
-                        <div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div>
+                    <div class="stat-card stat-info-card stat-clickable" onclick="goToInventoryFilter('all')">
+                        <div class="stat-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
                         <div class="stat-info">
-                            <h3>ปลอดภัย (ชิ้น)</h3>
-                            <p class="value" id="stat-green">0</p>
-                            <span class="tag-label tag-green">หมดอายุ > 30 วัน</span>
+                            <h3>สินค้าทั้งหมด (ชิ้น)</h3>
+                            <p class="value" id="stat-total">0</p>
+                            <span class="stat-cta">ดูทั้งหมด <i class="fa-solid fa-arrow-right"></i></span>
                         </div>
                     </div>
-                    <div class="stat-card stat-warning">
-                        <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
-                        <div class="stat-info">
-                            <h3>มีความเสี่ยง (ชิ้น)</h3>
-                            <p class="value" id="stat-yellow">0</p>
-                            <span class="tag-label tag-yellow">หมดอายุใน 8-30 วัน</span>
-                        </div>
-                    </div>
-                    <div class="stat-card stat-danger">
+                    <div class="stat-card stat-danger stat-clickable" onclick="goToInventoryFilter('red')">
                         <div class="stat-icon"><i class="fa-solid fa-circle-xmark"></i></div>
                         <div class="stat-info">
                             <h3>วิกฤต (ชิ้น)</h3>
@@ -165,40 +141,56 @@
                             <span class="tag-label tag-red">หมดอายุ หรือ < 7 วัน</span>
                         </div>
                     </div>
-                    <div class="stat-card stat-info-card">
-                        <div class="stat-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+                    <div class="stat-card stat-warning stat-clickable" onclick="goToInventoryFilter('yellow')">
+                        <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
                         <div class="stat-info">
-                            <h3>สินค้าทั้งหมด (ชิ้น)</h3>
-                            <p class="value" id="stat-total">0</p>
+                            <h3>มีความเสี่ยง (ชิ้น)</h3>
+                            <p class="value" id="stat-yellow">0</p>
+                            <span class="tag-label tag-yellow">หมดอายุใน 8-15 วัน</span>
+                        </div>
+                    </div>
+                    <div class="stat-card stat-success stat-clickable" onclick="goToInventoryFilter('green')">
+                        <div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div>
+                        <div class="stat-info">
+                            <h3>ปลอดภัย (ชิ้น)</h3>
+                            <p class="value" id="stat-green">0</p>
+                            <span class="tag-label tag-green">หมดอายุ > 15 วัน</span>
                         </div>
                     </div>
                 </div>
+            </section>
 
-                <div class="content-grid">
-                    <!-- Action Engine Recommendations (Bundling & Clearance) -->
-                    <div class="card recommendations-card">
-                        <div class="card-header">
-                            <h2>AI จัดการสินค้า & จับคู่โปรโมชั่น</h2>
-                            <span class="badge">กลยุทธ์ระบายสินค้า</span>
-                        </div>
-                        <div class="card-body">
-                            <ul class="action-list" id="dashboard-actions-list">
-                                <!-- Populated by JS -->
-                            </ul>
-                        </div>
+            <!-- AI Assessment View -->
+            <section id="ai-view" class="view-section">
+                <header class="section-header">
+                    <div class="header-title">
+                        <h1>AI ประเมินสินค้า</h1>
+                        <p>ให้ AI ช่วยวางแผนจัดการสต็อกและการสั่งซื้อ</p>
                     </div>
+                </header>
 
-                    <!-- Smart Restock Predictions -->
-                    <div class="card restock-card">
-                        <div class="card-header">
-                            <h2>AI แนะนำการสั่งซื้อรอบถัดไป</h2>
-                            <span class="badge bg-blue">พยากรณ์ล่วงหน้า</span>
-                        </div>
-                        <div class="card-body">
-                            <ul class="action-list" id="dashboard-restock-list">
-                                <!-- Populated by JS -->
-                            </ul>
-                        </div>
+                <div class="ai-mode-switch">
+                    <button class="ai-mode-btn active" data-mode="manage" onclick="setAiMode('manage')">
+                        <span class="ai-mode-ic"><i class="fa-solid fa-boxes-stacked"></i></span>
+                        <span class="ai-mode-title">AI แนะนำการจัดการสินค้า</span>
+                        <span class="ai-mode-sub">ระบายของใกล้หมดอายุ</span>
+                    </button>
+                    <button class="ai-mode-btn" data-mode="restock" onclick="setAiMode('restock')">
+                        <span class="ai-mode-ic"><i class="fa-solid fa-cart-shopping"></i></span>
+                        <span class="ai-mode-title">AI แนะนำการซื้อรอบถัดไป</span>
+                        <span class="ai-mode-sub">พยากรณ์การสั่งซื้อ</span>
+                    </button>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 id="ai-list-title">AI แนะนำการจัดการสินค้า</h2>
+                        <button class="btn btn-outline btn-sm" onclick="openAddAdvice()"><i class="fa-solid fa-plus"></i> เพิ่มสินค้า</button>
+                    </div>
+                    <div class="card-body">
+                        <ul class="action-list" id="ai-list">
+                            <!-- Populated by JS -->
+                        </ul>
                     </div>
                 </div>
             </section>
@@ -287,6 +279,23 @@
                         <button class="btn btn-primary" onclick="switchView('inbound')"><i class="fa-solid fa-plus"></i> เติมของเข้าสต็อก</button>
                     </div>
                 </header>
+
+                <div class="filter-bar">
+                    <div class="filter-chips" id="inv-filter-chips">
+                        <button class="filter-chip active" data-filter="all" onclick="setInvFilter('all')">ทั้งหมด</button>
+                        <button class="filter-chip chip-red" data-filter="red" onclick="setInvFilter('red')">วิกฤต</button>
+                        <button class="filter-chip chip-yellow" data-filter="yellow" onclick="setInvFilter('yellow')">เสี่ยง</button>
+                        <button class="filter-chip chip-green" data-filter="green" onclick="setInvFilter('green')">ปลอดภัย</button>
+                    </div>
+                    <div class="filter-sort">
+                        <label for="inv-sort"><i class="fa-solid fa-arrow-down-wide-short"></i></label>
+                        <select id="inv-sort" onchange="renderInventory()">
+                            <option value="expiry-asc">ใกล้หมดอายุที่สุดก่อน</option>
+                            <option value="expiry-desc">หมดอายุไกลที่สุดก่อน</option>
+                            <option value="name">ชื่อสินค้า (ก-ฮ)</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="card">
                     <div class="card-body">
                         <div class="table-responsive">
@@ -397,37 +406,69 @@
 
         <!-- Plans / Upgrade Modal -->
         <div id="plans-modal" class="modal-overlay hidden">
-            <div class="modal-card plans-card">
+            <div class="modal-card plans-card plans-card-3">
                 <div class="modal-header">
                     <h3><i class="fa-solid fa-crown"></i> เลือกแพ็กเกจการใช้งาน</h3>
                     <button type="button" class="modal-close" onclick="closePlans()"><i class="fa-solid fa-xmark"></i></button>
                 </div>
-                <div class="plans-grid">
+                <div class="plans-grid plans-grid-3">
                     <div class="plan-col">
                         <div class="plan-name">Free</div>
                         <div class="plan-price">฿0<span>/เดือน</span></div>
                         <ul class="plan-features">
-                            <li><i class="fa-solid fa-check"></i> สแกนรับเข้า + จัดการคลังสินค้า</li>
-                            <li><i class="fa-solid fa-check"></i> ระบบดำเนินการ & ผู้ช่วย AI พื้นฐาน</li>
-                            <li><i class="fa-solid fa-check"></i> บันทึกแหล่งที่มาสินค้า</li>
-                            <li class="muted"><i class="fa-solid fa-xmark"></i> AI วิเคราะห์ข้อมูลเชิงลึก</li>
+                            <li><i class="fa-solid fa-check"></i> ระบบทั้งหมดที่มีตอนนี้</li>
+                            <li><i class="fa-solid fa-check"></i> จัดการคลังสินค้า + AI ประเมิน</li>
+                            <li><i class="fa-solid fa-clock"></i> สแกนได้ <strong>20 ครั้ง / 12 ชม.</strong></li>
+                            <li class="muted"><i class="fa-solid fa-xmark"></i> AI Agent วิเคราะห์เชิงลึก</li>
+                            <li class="muted"><i class="fa-solid fa-xmark"></i> เชื่อมต่อ HandHeld</li>
                         </ul>
                         <button class="btn btn-outline btn-block" onclick="downgradeToFree()">ใช้แพ็กเกจ Free</button>
                     </div>
                     <div class="plan-col plan-highlight">
-                        <div class="plan-ribbon">สำหรับผู้ประกอบการ</div>
-                        <div class="plan-name">Business</div>
-                        <div class="plan-price">฿<span class="js-price">349</span><span>/เดือน</span></div>
+                        <div class="plan-ribbon">แนะนำ</div>
+                        <div class="plan-name">Pro</div>
+                        <div class="plan-price">฿99<span>/เดือน</span></div>
                         <ul class="plan-features">
                             <li><i class="fa-solid fa-check"></i> ทุกอย่างใน Free</li>
-                            <li><i class="fa-solid fa-star" style="color:var(--warning-color);"></i> <strong>AI วิเคราะห์ข้อมูล</strong> เชิงลึกขึ้น</li>
-                            <li><i class="fa-solid fa-check"></i> สรุป waste rate & ความเสี่ยงตามซัพพลายเออร์</li>
-                            <li><i class="fa-solid fa-check"></i> แนะนำการสั่งซื้อ & กลยุทธ์ระบายสินค้าแม่นขึ้น</li>
+                            <li><i class="fa-solid fa-star" style="color:var(--warning-color);"></i> <strong>สแกนได้ไม่จำกัด</strong></li>
+                            <li><i class="fa-solid fa-star" style="color:var(--warning-color);"></i> <strong>AI Agent</strong> วิเคราะห์ข้อมูลลึกขึ้น</li>
+                            <li><i class="fa-solid fa-check"></i> ใส่รายละเอียดร้านเพื่อคำนวณแม่นขึ้น</li>
                         </ul>
-                        <button class="btn btn-primary btn-block" onclick="upgradeToBusiness()"><i class="fa-solid fa-crown"></i> อัปเกรดเป็น Business</button>
+                        <button class="btn btn-primary btn-block" onclick="upgradeToPro()"><i class="fa-solid fa-crown"></i> ทดลองฟรี 7 เดือน</button>
+                        <p class="plan-trial">แล้วค่อยจ่าย ฿99/เดือน</p>
+                    </div>
+                    <div class="plan-col">
+                        <div class="plan-name">Entrepreneur</div>
+                        <div class="plan-price plan-price-sm">Business</div>
+                        <ul class="plan-features">
+                            <li><i class="fa-solid fa-check"></i> ทุกอย่างใน Pro</li>
+                            <li><i class="fa-solid fa-star" style="color:var(--purple-color);"></i> <strong>เชื่อมต่อเครื่องสแกน HandHeld</strong></li>
+                            <li><i class="fa-solid fa-check"></i> เหมาะกับร้านขนาดใหญ่ / หลายสาขา</li>
+                        </ul>
+                        <button class="btn btn-outline btn-block" onclick="upgradeToBusiness()"><i class="fa-solid fa-barcode"></i> อัปเกรดเป็น Business</button>
                     </div>
                 </div>
-                <p class="plans-note">* เวอร์ชันสาธิต: การอัปเกรดเป็นการจำลองเพื่อทดสอบฟีเจอร์ ยังไม่มีการตัดเงินจริง</p>
+                <p class="plans-note">* เวอร์ชันสาธิต: การอัปเกรด/ทดลองเป็นการจำลองเพื่อทดสอบฟีเจอร์ ยังไม่มีการตัดเงินจริง</p>
+            </div>
+        </div>
+
+        <!-- AI: Add product for advice -->
+        <div id="add-advice-modal" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3><i class="fa-solid fa-plus"></i> ขอคำแนะนำสินค้าเพิ่ม</h3>
+                    <button type="button" class="modal-close" onclick="closeAddAdvice()"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="scan-form">
+                    <div class="form-group">
+                        <label>เลือกสินค้าจากคลัง</label>
+                        <select id="add-advice-select" class="select-input"></select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-outline" onclick="closeAddAdvice()">ยกเลิก</button>
+                        <button type="button" class="btn btn-primary" onclick="confirmAddAdvice()">ขอคำแนะนำ</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -457,12 +498,16 @@
         <nav class="bottom-nav">
             <ul class="nav-links">
                 <li class="active" data-view="dashboard">
-                    <i class="fa-solid fa-chart-pie nav-icon"></i>
-                    <span class="nav-text">แดชบอร์ด</span>
+                    <i class="fa-solid fa-house nav-icon"></i>
+                    <span class="nav-text">หน้าหลัก</span>
                 </li>
-                <li data-view="inbound">
-                    <i class="fa-solid fa-camera nav-icon"></i>
-                    <span class="nav-text">สแกนรับเข้า</span>
+                <li data-view="ai">
+                    <i class="fa-solid fa-robot nav-icon"></i>
+                    <span class="nav-text">AI ประเมิน</span>
+                </li>
+                <li class="nav-scan" data-view="inbound">
+                    <span class="nav-scan-btn"><i class="fa-solid fa-camera"></i></span>
+                    <span class="nav-text">สแกน</span>
                 </li>
                 <li data-view="inventory">
                     <i class="fa-solid fa-boxes-stacked nav-icon"></i>
@@ -476,6 +521,6 @@
         </nav>
     </div>
 
-    <script src="app.js?v=13"></script>
+    <script src="app.js?v=14"></script>
 </body>
 </html>

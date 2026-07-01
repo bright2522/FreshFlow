@@ -579,59 +579,93 @@ html[data-theme="dark"] {
 html[data-theme="dark"] .bundle-card { background-color: rgba(139,92,246,0.14); border-color: rgba(139,92,246,0.5); }
 html[data-theme="dark"] .rec-purple { background: rgba(124,58,237,0.38); color: #ede9fe; border: 1px solid rgba(167,139,250,0.75); }
 
-/* ===== Dashboard Hero (focus + prominent scan) ===== */
-.dash-hero {
+
+/* ===== Dashboard polish: cleaner carded recommendation items ===== */
+.action-list > .action-item:not(.bundle-card) {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: border-color 0.2s;
+}
+.action-list > .action-item:not(.bundle-card):hover { border-color: var(--primary-color); }
+.action-list > .action-item:not(.bundle-card):last-child { margin-bottom: 0; padding-bottom: 16px; }
+/* a touch more breathing room between cards on the dashboard */
+.recommendations-card .card-body, .restock-card .card-body { padding: 16px; }
+
+/* ============================================================
+   v14: Home clickable stats · AI view · filters · central scan · 3 plans
+   ============================================================ */
+
+/* Clickable stat cards (home) */
+.stat-clickable { cursor: pointer; }
+.stat-clickable:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.stat-cta { font-size: 12px; font-weight: 600; color: var(--primary-color); display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; }
+
+/* Central prominent scan button in bottom nav */
+.nav-scan { position: relative; }
+.nav-scan .nav-scan-btn {
+    width: 56px; height: 56px; border-radius: 50%;
     background: linear-gradient(135deg, var(--primary-color), var(--purple-color));
-    border-radius: var(--radius-lg);
-    padding: 26px 22px;
-    margin-bottom: 24px;
-    color: #fff;
-    text-align: center;
-    box-shadow: var(--shadow-md);
-    transition: background 0.4s ease;
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: 22px; margin-top: -28px; margin-bottom: 2px;
+    box-shadow: 0 8px 20px rgba(59,130,246,0.5);
+    border: 4px solid var(--bg-nav);
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1), box-shadow .3s;
 }
-.dash-hero.hero-state-red { background: linear-gradient(135deg, #f43f5e, #b91c1c); }
-.dash-hero.hero-state-yellow { background: linear-gradient(135deg, #f59e0b, #d97706); }
-.dash-hero.hero-state-ok { background: linear-gradient(135deg, #10b981, #0d9488); }
-.hero-eyebrow { font-size: 12px; font-weight: 600; opacity: 0.92; letter-spacing: 0.4px; display: inline-flex; gap: 6px; align-items: center; }
-.hero-focus { font-size: 22px; font-weight: 800; margin: 10px 0 4px; line-height: 1.32; }
-.hero-focus-sub { font-size: 13px; opacity: 0.92; margin-bottom: 22px; }
-.hero-focus-sub:empty { margin-bottom: 16px; }
+.nav-scan:hover .nav-scan-btn { box-shadow: 0 10px 26px rgba(59,130,246,0.65); }
+.nav-scan:active .nav-scan-btn { transform: scale(.9); }
+.nav-scan.active .nav-scan-btn { transform: translateY(-2px) scale(1.06); }
+.nav-scan.active { color: var(--primary-color); }
 
-/* Big central scan button */
-.hero-scan-cta {
-    display: inline-flex; align-items: center; gap: 16px;
-    background: #fff; border: none; border-radius: 18px;
-    padding: 18px 30px; cursor: pointer; margin: 4px auto 0;
-    box-shadow: 0 10px 28px rgba(0,0,0,0.2);
-    transition: transform 0.2s, box-shadow 0.2s;
-    animation: heroGlow 2.4s ease-in-out infinite;
-}
-.hero-scan-cta:hover { transform: translateY(-3px); box-shadow: 0 16px 36px rgba(0,0,0,0.3); }
-.hero-scan-cta:active { transform: scale(0.97); }
-.hero-scan-ic { width: 54px; height: 54px; border-radius: 14px; background: linear-gradient(135deg, var(--primary-color), var(--purple-color)); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 25px; flex-shrink: 0; }
-.hero-scan-textwrap { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.25; }
-.hero-scan-label { font-size: 18px; font-weight: 800; color: #1e293b; }
-.hero-scan-sub { font-size: 12px; font-weight: 500; color: #64748b; }
-.hero-scan-arrow { color: var(--primary-color); font-size: 16px; margin-left: 6px; }
-@keyframes heroGlow {
-    0%, 100% { box-shadow: 0 10px 28px rgba(0,0,0,0.2); }
-    50% { box-shadow: 0 10px 34px rgba(255,255,255,0.6); }
-}
+/* AI assessment: 2 big mode buttons */
+.ai-mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+.ai-mode-btn { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding: 20px 14px; border-radius: var(--radius-lg); cursor: pointer; background: var(--bg-card); border: 2px solid var(--border-color); transition: border-color .2s, background .2s, box-shadow .2s; color: var(--text-main); }
+.ai-mode-btn:hover { border-color: var(--primary-color); }
+.ai-mode-btn.active { border-color: var(--primary-color); background: rgba(59,130,246,0.08); box-shadow: var(--shadow-sm); }
+.ai-mode-ic { width: 48px; height: 48px; border-radius: 13px; background: linear-gradient(135deg, var(--primary-color), var(--purple-color)); color:#fff; display:flex; align-items:center; justify-content:center; font-size:21px; transition: transform .2s; }
+.ai-mode-btn.active .ai-mode-ic { transform: scale(1.08); }
+.ai-mode-title { font-size: 14px; font-weight: 700; line-height: 1.3; }
+.ai-mode-sub { font-size: 12px; color: var(--text-muted); }
 
-/* Secondary focus action (jump to what needs attention) */
-.hero-focus-action {
-    display: inline-block; margin-top: 14px;
-    background: rgba(255,255,255,0.18); color: #fff;
-    border: 1px solid rgba(255,255,255,0.4);
-    border-radius: 999px; padding: 9px 22px; font-size: 13px; font-weight: 600; cursor: pointer;
-    transition: background 0.2s;
-}
-.hero-focus-action:hover { background: rgba(255,255,255,0.3); }
-.hero-focus-action.hidden { display: none; }
+/* Collapsible AI reason */
+.reason-toggle { display: inline-flex; align-items: center; gap: 7px; margin-top: 8px; background: transparent; border: 1px solid var(--border-color); border-radius: 8px; padding: 6px 12px; font-size: 12.5px; font-weight: 600; color: var(--primary-color); cursor: pointer; transition: background .15s; }
+.reason-toggle:hover { background: rgba(59,130,246,0.08); }
+.reason-toggle .chev { transition: transform .25s; font-size: 11px; }
+.reason-toggle.open .chev { transform: rotate(180deg); }
+.ai-reasoning.collapsed { display: none; }
 
+/* Inventory filter bar */
+.filter-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.filter-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.filter-chip { padding: 7px 16px; border-radius: 999px; border: 1px solid var(--border-color); background: var(--bg-card); font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-muted); transition: all .15s; }
+.filter-chip:hover { border-color: var(--primary-color); color: var(--text-main); }
+.filter-chip.active { background: var(--primary-color); border-color: var(--primary-color); color:#fff; }
+.filter-chip.chip-red.active { background: var(--danger-color); border-color: var(--danger-color); }
+.filter-chip.chip-yellow.active { background: var(--warning-color); border-color: var(--warning-color); }
+.filter-chip.chip-green.active { background: var(--success-color); border-color: var(--success-color); }
+.filter-sort { display: flex; align-items: center; gap: 8px; color: var(--text-muted); }
+.filter-sort select { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-main); font-size: 13px; }
+
+/* 3-tier plans */
+.plans-card-3 { max-width: 940px; }
+.plans-grid-3 { grid-template-columns: 1fr; }
+@media (min-width: 760px) { .plans-grid-3 { grid-template-columns: 1fr 1fr 1fr; } }
+.plan-price-sm { font-size: 20px; }
+.plan-trial { font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 8px; }
+.btn-sm { padding: 6px 12px; font-size: 13px; }
+
+/* Compact inventory rows */
+.inventory-table td, .inventory-table th { padding: 10px 12px; }
 @media (max-width: 600px) {
-    .dash-hero { padding: 22px 16px; }
-    .hero-focus { font-size: 19px; }
-    .hero-scan-cta { width: 100%; justify-content: center; padding: 16px; }
+    .inventory-table tr { padding: 4px 14px; margin-bottom: 10px; }
+    .inventory-table td { padding: 7px 0; font-size: 13px; border-bottom-color: #eef2f7 !important; }
+    .inventory-table td::before { font-size: 11px; }
+    .item-source { font-size: 11px; }
+    .inventory-table td.cell-actions { gap: 6px; padding-top: 10px; }
+    .inventory-table td.cell-actions .btn { padding: 9px !important; font-size: 13px !important; }
+    .ai-mode-switch { gap: 10px; }
+    .ai-mode-btn { padding: 16px 10px; }
+    .filter-bar { gap: 10px; }
+    .nav-scan .nav-scan-btn { width: 52px; height: 52px; font-size: 20px; margin-top: -24px; }
 }

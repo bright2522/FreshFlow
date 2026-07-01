@@ -8,7 +8,10 @@ const state = {
         { id: 5, name: 'แยมสตรอว์เบอร์รี', lot: 'D1-02', expiry: '2027-01-10', qty: 150, status: 'green', slot: 'D1-02', source: 'ตัวแทนจำหน่ายฟู้ดส์' }
     ],
     knownSources: [],
-    plan: 'free',         // 'free' | 'business'
+    plan: 'free',         // 'free' | 'pro' | 'business'
+    aiMode: 'manage',     // 'manage' | 'restock'
+    aiExtra: { manage: [], restock: [] }, // สินค้าที่ผู้ใช้กด "เพิ่มสินค้า"
+    invFilter: 'all',     // ตัวกรองคลังสินค้า
     knownLots: [],
     profile: null,        // ข้อมูลร้าน (จากตอน Login)
     actions: [],          // บันทึกการดำเนินการแบบละเอียด
@@ -57,16 +60,52 @@ window.toggleTheme = function() {
     applyTheme(next);
 }
 
-// --- PLAN (แพ็กเกจการใช้งาน) ---
+// --- PLAN (แพ็กเกจการใช้งาน: free / pro / business) ---
+const SCAN_LIMIT = 20;              // Free: 20 ครั้ง
+const SCAN_WINDOW_MS = 12 * 60 * 60 * 1000; // ต่อ 12 ชั่วโมง
+
 function loadPlan() {
-    return localStorage.getItem('freshflow_plan') === 'business' ? 'business' : 'free';
+    const p = localStorage.getItem('freshflow_plan');
+    return (p === 'pro' || p === 'business') ? p : 'free';
 }
 function savePlan(plan) {
     state.plan = plan;
     localStorage.setItem('freshflow_plan', plan);
 }
-function isBusiness() {
-    return state.plan === 'business';
+function isBusiness() { return state.plan === 'business'; }
+function isPro() { return state.plan === 'pro' || state.plan === 'business'; } // Pro ขึ้นไป
+
+// นับจำนวนสแกนในหน้าต่าง 12 ชม. (เฉพาะ Free ที่จำกัด)
+function getScanTimestamps() {
+    try {
+        const arr = JSON.parse(localStorage.getItem('freshflow_scans') || '[]');
+        const cutoff = Date.now() - SCAN_WINDOW_MS;
+        return arr.filter(t => t > cutoff);
+    } catch (e) { return []; }
+}
+function scansUsed() { return getScanTimestamps().length; }
+function scansLeft() { return Math.max(0, SCAN_LIMIT - scansUsed()); }
+function canScanNow() {
+    if (isPro()) return true; // Pro / Business ไม่จำกัด
+    return scansUsed() < SCAN_LIMIT;
+}
+function recordScan() {
+    if (isPro()) return;
+    const arr = getScanTimestamps();
+    arr.push(Date.now());
+    localStorage.setItem('freshflow_scans', JSON.stringify(arr));
+}
+function showScanLimit() {
+    const ts = getScanTimestamps();
+    let mins = 0;
+    if (ts.length) {
+        const oldest = Math.min(...ts);
+        mins = Math.max(1, Math.ceil((oldest + SCAN_WINDOW_MS - Date.now()) / 60000));
+    }
+    const hrs = Math.floor(mins / 60), rem = mins % 60;
+    const wait = hrs > 0 ? `${hrs} ชม. ${rem} นาที` : `${rem} นาที`;
+    alert(`แพ็กเกจ Free สแกนได้ ${SCAN_LIMIT} ครั้ง/12 ชม.\nคุณใช้ครบแล้ว ลองใหม่ในอีกประมาณ ${wait}\n\nอัปเกรดเป็น Pro เพื่อสแกนได้ไม่จำกัด`);
+    openPlans();
 }
 
 // --- DISPOSITION KNOWLEDGE BASE (ใช้เป็นสมองของผู้ช่วย AI) ---
@@ -261,6 +300,7 @@ function initApp() {
     updatePlanBadge();
     applyTheme(loadTheme());
     renderDashboard();
+    renderAiView();
     renderInventory();
     renderHistory();
 }
@@ -329,6 +369,7 @@ window.openShopSettings = function() {
 }
 
 window.switchView = function(viewId) {
+    if (viewId === 'inbound' && !canScanNow()) { showScanLimit(); return; }
     navLinks.forEach(l => l.classList.remove('active'));
     document.querySelector(`.nav-links li[data-view="${viewId}"]`).classList.add('active');
 
@@ -343,154 +384,198 @@ window.switchView = function(viewId) {
     }
 
     if(viewId === 'dashboard') renderDashboard();
+    if(viewId === 'ai') renderAiView();
     if(viewId === 'inventory') renderInventory();
     if(viewId === 'actions') renderHistory();
 }
 
 // --- RENDERING LOGIC ---
-let heroFocusTarget = 'inventory';
-
-// บอกผู้ใช้ว่าควรโฟกัสอะไรก่อนบนแดชบอร์ด
-function renderHeroFocus() {
-    const hero = document.querySelector('.dash-hero');
-    const msgEl = document.getElementById('hero-focus-msg');
-    const subEl = document.getElementById('hero-focus-sub');
-    const actBtn = document.getElementById('hero-focus-action');
-    if (!hero || !msgEl) return;
-
-    const reds = state.inventory.filter(i => i.status === 'red').sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
-    const yellows = state.inventory.filter(i => i.status === 'yellow').sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
-
-    hero.classList.remove('hero-state-red', 'hero-state-yellow', 'hero-state-ok');
-
-    if (reds.length > 0) {
-        hero.classList.add('hero-state-red');
-        msgEl.textContent = `🔴 มีสินค้าวิกฤต ${reds.length} รายการ ต้องจัดการด่วน`;
-        subEl.textContent = `ด่วนสุด: ${reds[0].name} (ล็อต ${reds[0].slot || reds[0].lot} · หมดอายุ ${reds[0].expiry})`;
-        heroFocusTarget = 'inventory';
-        actBtn.textContent = 'ไปจัดการสินค้าวิกฤต';
-        actBtn.classList.remove('hidden');
-    } else if (yellows.length > 0) {
-        hero.classList.add('hero-state-yellow');
-        msgEl.textContent = `🟡 มีสินค้าเสี่ยง ${yellows.length} รายการ ควรเร่งระบาย`;
-        subEl.textContent = `ใกล้หมดอายุสุด: ${yellows[0].name} (หมดอายุ ${yellows[0].expiry})`;
-        heroFocusTarget = 'inventory';
-        actBtn.textContent = 'ดูสินค้าเสี่ยง';
-        actBtn.classList.remove('hidden');
-    } else {
-        hero.classList.add('hero-state-ok');
-        msgEl.textContent = '✅ สต็อกทุกอย่างปลอดภัย';
-        subEl.textContent = 'ไม่มีสินค้าเร่งด่วน — สแกนรับเข้าสินค้าใหม่ได้เลย';
-        actBtn.classList.add('hidden');
-    }
-}
-
-window.goToFocus = function() {
-    switchView(heroFocusTarget || 'inventory');
-}
 
 function renderDashboard() {
     let totalGreen = 0, totalYellow = 0, totalRed = 0, grandTotal = 0;
-    
     state.inventory.forEach(item => {
         if(item.status === 'green') totalGreen += item.qty;
         if(item.status === 'yellow') totalYellow += item.qty;
         if(item.status === 'red') totalRed += item.qty;
         grandTotal += item.qty;
     });
-
     document.getElementById('stat-green').textContent = totalGreen.toLocaleString();
     document.getElementById('stat-yellow').textContent = totalYellow.toLocaleString();
     document.getElementById('stat-red').textContent = totalRed.toLocaleString();
     document.getElementById('stat-total').textContent = grandTotal.toLocaleString();
+}
 
-    // --- Hero focus: บอกว่าควรโฟกัสอะไรก่อน ---
-    renderHeroFocus();
+// ===================== AI ประเมินสินค้า =====================
+window.setAiMode = function(mode) {
+    state.aiMode = mode;
+    document.querySelectorAll('.ai-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+    renderAiView();
+}
 
-    // 1. Render Action Engine Recommendations
-    const actionList = document.getElementById('dashboard-actions-list');
-    actionList.innerHTML = '';
-    
-    const riskItems = state.inventory.filter(i => i.status !== 'green');
-    
-    const breadAtRisk = riskItems.find(i => i.name.includes('ขนมปัง') && i.status === 'red');
-    if(breadAtRisk) {
-        const breadDays = Math.ceil((new Date(breadAtRisk.expiry) - new Date()) / (1000 * 60 * 60 * 24));
-        const breadWhen = breadDays <= 0 ? 'หมดอายุแล้ว' : `เหลืออีกเพียง ${breadDays} วัน`;
-        actionList.innerHTML += `
+// เปิด/ปิด เหตุผล AI (ซ่อนไว้ก่อนเพื่อไม่ให้ลายตา)
+window.toggleReason = function(btn) {
+    const reason = btn.nextElementSibling;
+    if (!reason) return;
+    reason.classList.toggle('collapsed');
+    btn.classList.toggle('open');
+    const open = !reason.classList.contains('collapsed');
+    btn.querySelector('.reason-label').textContent = open ? 'ซ่อนเหตุผล AI' : 'ดูเหตุผล AI';
+}
+
+function reasonBlock(icon, text) {
+    return `
+        <button type="button" class="reason-toggle" onclick="toggleReason(this)">
+            <i class="fa-solid fa-lightbulb"></i> <span class="reason-label">ดูเหตุผล AI</span> <i class="fa-solid fa-chevron-down chev"></i>
+        </button>
+        <div class="ai-reasoning collapsed"><i class="fa-solid ${icon}"></i> <span><strong>เหตุผล AI:</strong> ${text}</span></div>
+    `;
+}
+
+function daysLeft(item) {
+    return Math.ceil((new Date(item.expiry) - new Date()) / (1000 * 60 * 60 * 24));
+}
+
+function manageAdvice(item) {
+    const d = daysLeft(item);
+    if (item.status === 'red') return { rec: 'ส่งบริจาค หรือ นำไปทำลาย', warn: true, btn: 'ดำเนินการ',
+        reason: `อยู่ในช่วงวิกฤต (${d <= 0 ? 'หมดอายุแล้ว' : 'เหลือ ' + d + ' วัน'}) หากปล่อยไว้จะเน่าเสียและเปลืองพื้นที่จัดเก็บ (Slot ${item.slot})` };
+    if (item.status === 'yellow') return { rec: 'จัดโปรโมชั่นลดราคาด่วน 20%', warn: false, btn: 'ลดราคา 20%',
+        reason: `เหลืออายุ ${d} วัน (โซนเสี่ยง 8–15 วัน) การลดราคา 20% ช่วยเพิ่มโอกาสขายออกก่อนถึงจุดวิกฤต` };
+    return { rec: 'ยังปลอดภัย — ติดตามการขายตามปกติ', warn: false, btn: 'ดูรายละเอียด',
+        reason: `เหลืออายุ ${d} วัน (ปลอดภัย > 15 วัน) ยังไม่ต้องเร่งระบาย เดินระบบ FEFO ขายตัวที่หมดอายุก่อนตามปกติ` };
+}
+
+function manageItemHtml(item) {
+    const a = manageAdvice(item);
+    return `
+        <li class="action-item">
+            <div class="action-details">
+                <span class="dot dot-${item.status}"></span>
+                <div>
+                    <h4>${item.name} (ล็อต ${item.lot})</h4>
+                    <p>จำนวน ${item.qty} ชิ้น | หมดอายุ: ${item.expiry}</p>
+                    <span class="recommendation-text ${a.warn ? 'recommendation-warning' : ''}">แนะนำ: ${a.rec}</span>
+                    ${reasonBlock('fa-robot', a.reason)}
+                </div>
+            </div>
+            <button class="btn btn-outline" onclick="openActionModal(${item.id})">${a.btn}</button>
+        </li>
+    `;
+}
+
+function renderManageList(list) {
+    // Cross-sell พิเศษ สำหรับขนมปังวิกฤต
+    const breadAtRisk = state.inventory.find(i => i.name.includes('ขนมปัง') && i.status === 'red');
+    if (breadAtRisk) {
+        const bd = daysLeft(breadAtRisk);
+        const when = bd <= 0 ? 'หมดอายุแล้ว' : `เหลืออีกเพียง ${bd} วัน`;
+        list.innerHTML += `
             <li class="action-item bundle-card">
                 <div class="action-details">
                     <span class="dot dot-purple"></span>
                     <div>
                         <h4><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--purple-color)"></i> AI จับคู่สินค้า (Cross-Selling)</h4>
                         <p><strong>${breadAtRisk.name} (Lot ${breadAtRisk.lot})</strong> มีจำนวน ${breadAtRisk.qty} ชิ้น</p>
-                        <span class="recommendation-text rec-purple">
-                            เสนอโปรโมชั่น: "ซื้อแยม 1 ขวด รับสิทธิ์ซื้อขนมปังลด 30%"
-                        </span>
-                        <div class="ai-reasoning">
-                            <i class="fa-solid fa-lightbulb"></i> 
-                            <span><strong>เหตุผล AI:</strong> ขนมปังล็อตนี้${breadWhen} เสี่ยงสูญเสีย 100% จึงเสนอจับคู่กับ "แยม" ซึ่งเป็นสินค้าขายดี เพื่อเร่งระบายออกอย่างรวดเร็ว</span>
-                        </div>
+                        <span class="recommendation-text rec-purple">เสนอโปรโมชั่น: "ซื้อแยม 1 ขวด รับสิทธิ์ซื้อขนมปังลด 30%"</span>
+                        ${reasonBlock('fa-lightbulb', `ขนมปังล็อตนี้${when} เสี่ยงสูญเสีย 100% จึงเสนอจับคู่กับ "แยม" ซึ่งเป็นสินค้าขายดี เพื่อเร่งระบายออกอย่างรวดเร็ว`)}
                     </div>
                 </div>
                 <button class="btn btn-action" onclick="applyBundle('${breadAtRisk.name}', ${breadAtRisk.id})">สร้างโปรโมชั่น</button>
             </li>
         `;
     }
+    // สินค้าเสี่ยง/วิกฤตอื่นๆ (เรียงใกล้หมดอายุก่อน)
+    state.inventory
+        .filter(i => i.status !== 'green' && !i.name.includes('ขนมปัง'))
+        .sort((a, b) => new Date(a.expiry) - new Date(b.expiry))
+        .forEach(item => { list.innerHTML += manageItemHtml(item); });
 
-    riskItems.forEach(item => {
-        if(item.name.includes('ขนมปัง')) return; 
-
-        const actionText = item.status === 'red' ? 'ส่งบริจาค หรือ นำไปทำลาย' : 'จัดโปรโมชั่นลดราคาด่วน 20%';
-        const btnText = item.status === 'red' ? 'ดำเนินการ' : 'ลดราคา 20%';
-        const reasonText = item.status === 'red' ? `สินค้าอยู่ในช่วงวิกฤต (หมดอายุ ${item.expiry}) หากปล่อยไว้จะเน่าเสียและเปลืองพื้นที่จัดเก็บ (Slot ${item.slot})` : `เหลืออายุ 8–30 วัน เริ่มเข้าโซนเสี่ยง การลดราคา 20% ช่วยเพิ่มโอกาสขายออกก่อนถึงจุดวิกฤตได้มาก`;
-        
-        actionList.innerHTML += `
-            <li class="action-item">
-                <div class="action-details">
-                    <span class="dot dot-${item.status}"></span>
-                    <div>
-                        <h4>${item.name} (ล็อต ${item.lot})</h4>
-                        <p>จำนวน ${item.qty} ชิ้น | หมดอายุ: ${item.expiry}</p>
-                        <span class="recommendation-text ${item.status === 'red' ? 'recommendation-warning' : ''}">แนะนำ: ${actionText}</span>
-                        <div class="ai-reasoning">
-                            <i class="fa-solid fa-robot"></i> 
-                            <span><strong>เหตุผล AI:</strong> ${reasonText}</span>
-                        </div>
-                    </div>
-                </div>
-                <button class="btn btn-outline" onclick="openActionModal(${item.id})">${btnText}</button>
-            </li>
-        `;
+    // สินค้าที่ผู้ใช้กด "เพิ่มสินค้า" เอง
+    (state.aiExtra.manage || []).forEach(id => {
+        const item = state.inventory.find(i => i.id === id);
+        if (item && (item.status === 'green' || item.name.includes('ขนมปัง'))) list.innerHTML += manageItemHtml(item);
     });
 
-    if(actionList.innerHTML === '') {
-         actionList.innerHTML = '<li style="padding: 20px; text-align:center; color:var(--text-muted);">ไม่มีสินค้าที่ต้องจัดการเร่งด่วน</li>';
+    if (list.innerHTML === '') list.innerHTML = emptyAi('ไม่มีสินค้าที่ต้องจัดการเร่งด่วน กด "เพิ่มสินค้า" เพื่อขอคำแนะนำสินค้าอื่น');
+}
+
+function restockItemHtml(name, currentOrder, recommendedOrder, reason) {
+    const trend = recommendedOrder >= currentOrder
+        ? '<i class="fa-solid fa-arrow-trend-up" style="color:var(--success-color);"></i>'
+        : '<i class="fa-solid fa-arrow-trend-down" style="color:var(--danger-color);"></i>';
+    return `
+        <li class="action-item">
+            <div class="action-details">
+                <span class="dot dot-info"></span>
+                <div>
+                    <h4>${name}</h4>
+                    <p>ยอดสั่งซื้อเดิม: <strong>${currentOrder}</strong> ชิ้น &rarr; แนะนำ: <strong>${recommendedOrder}</strong> ชิ้น ${trend}</p>
+                    ${reasonBlock('fa-brain', reason)}
+                </div>
+            </div>
+            <button class="btn btn-outline" onclick="applyRestockByName('${name.replace(/'/g, '')}')">ปรับยอดสั่งซื้อ</button>
+        </li>
+    `;
+}
+
+function renderRestockList(list) {
+    state.restockPredictions.forEach(pred => {
+        list.innerHTML += restockItemHtml(pred.name, pred.currentOrder, pred.recommendedOrder, pred.reason);
+    });
+    // สินค้าที่ผู้ใช้เพิ่มเอง
+    (state.aiExtra.restock || []).forEach(id => {
+        const item = state.inventory.find(i => i.id === id);
+        if (!item) return;
+        const base = Math.max(10, Math.round(item.qty * 0.8));
+        const rec = item.status === 'green' ? Math.round(base * 1.1) : Math.round(base * 0.6);
+        const reason = item.status === 'green'
+            ? `${item.name} ขายได้ต่อเนื่องและอายุยังเหลือมาก แนะนำคงระดับ/เพิ่มเล็กน้อยเพื่อกันของขาด`
+            : `${item.name} รอบนี้ใกล้หมดอายุ/ค้างสต็อก แนะนำลดปริมาณสั่งซื้อรอบหน้าเพื่อลดความเสี่ยงของเสีย`;
+        list.innerHTML += restockItemHtml(item.name, base, rec, reason);
+    });
+    if (list.innerHTML === '') list.innerHTML = emptyAi('ยังไม่มีคำแนะนำการสั่งซื้อ กด "เพิ่มสินค้า" เพื่อให้ AI ประเมิน');
+}
+
+function emptyAi(msg) {
+    return `<li style="padding: 28px 16px; text-align:center; color:var(--text-muted);">${msg}</li>`;
+}
+
+function renderAiView() {
+    const list = document.getElementById('ai-list');
+    const title = document.getElementById('ai-list-title');
+    if (!list) return;
+    list.innerHTML = '';
+    if (state.aiMode === 'restock') {
+        title.textContent = 'AI แนะนำการซื้อรอบถัดไป';
+        renderRestockList(list);
+    } else {
+        title.textContent = 'AI แนะนำการจัดการสินค้า';
+        renderManageList(list);
     }
+}
 
-    // 2. Render Smart Restock Predictions
-    const restockList = document.getElementById('dashboard-restock-list');
-    restockList.innerHTML = '';
-
-    state.restockPredictions.forEach((pred, index) => {
-        const trendIcon = pred.recommendedOrder > pred.currentOrder ? '<i class="fa-solid fa-arrow-trend-up" style="color:var(--success-color);"></i>' : '<i class="fa-solid fa-arrow-trend-down" style="color:var(--danger-color);"></i>';
-        restockList.innerHTML += `
-            <li class="action-item">
-                <div class="action-details">
-                    <span class="dot dot-info"></span>
-                    <div>
-                        <h4>${pred.name}</h4>
-                        <p style="margin-bottom: 8px;">ยอดสั่งซื้อเดิม: <strong>${pred.currentOrder}</strong> ชิ้น &rarr; ยอดสั่งซื้อแนะนำ: <strong>${pred.recommendedOrder}</strong> ชิ้น ${trendIcon}</p>
-                        <div class="ai-reasoning" style="margin-top:0;">
-                            <i class="fa-solid fa-brain"></i> 
-                            <span><strong>เหตุผล AI:</strong> ${pred.reason}</span>
-                        </div>
-                    </div>
-                </div>
-                <button class="btn btn-outline" onclick="applyRestock(${index})">ปรับยอดสั่งซื้อ</button>
-            </li>
-        `;
-    });
+// ---- เพิ่มสินค้าเพื่อขอคำแนะนำ ----
+window.openAddAdvice = function() {
+    const sel = document.getElementById('add-advice-select');
+    const shownIds = new Set();
+    if (state.aiMode !== 'restock') {
+        state.inventory.filter(i => i.status !== 'green' && !i.name.includes('ขนมปัง')).forEach(i => shownIds.add(i.id));
+    }
+    (state.aiExtra[state.aiMode] || []).forEach(id => shownIds.add(id));
+    const options = state.inventory.filter(i => !shownIds.has(i.id));
+    sel.innerHTML = options.length
+        ? options.map(i => `<option value="${i.id}">${i.name} (ล็อต ${i.lot} · หมดอายุ ${i.expiry})</option>`).join('')
+        : '<option value="">— ไม่มีสินค้าให้เพิ่มแล้ว —</option>';
+    document.getElementById('add-advice-modal').classList.remove('hidden');
+}
+window.closeAddAdvice = function() { document.getElementById('add-advice-modal').classList.add('hidden'); }
+window.confirmAddAdvice = function() {
+    const val = document.getElementById('add-advice-select').value;
+    if (!val) { closeAddAdvice(); return; }
+    const id = parseInt(val, 10);
+    if (!state.aiExtra[state.aiMode].includes(id)) state.aiExtra[state.aiMode].push(id);
+    closeAddAdvice();
+    renderAiView();
 }
 
 window.applyBundle = function(itemName, id) {
@@ -502,6 +587,7 @@ window.applyBundle = function(itemName, id) {
     if(itemIndex > -1) state.inventory.splice(itemIndex, 1);
     
     renderDashboard();
+    renderAiView();
     renderInventory();
     alert('ระบบได้เชื่อมต่อกับจุดขาย (POS) เพื่อเริ่มโปรโมชั่นจับคู่สินค้านี้เรียบร้อยแล้ว');
 }
@@ -513,29 +599,70 @@ window.applyRestock = function(index) {
         date: new Date().toLocaleString('th-TH')
     });
     state.restockPredictions.splice(index, 1);
-    renderDashboard();
+    renderAiView();
     alert('ระบบได้ปรับยอดแผนการสั่งซื้อ (PO) ในรอบถัดไปอัตโนมัติ');
 }
 
+window.applyRestockByName = function(name) {
+    const idx = state.restockPredictions.findIndex(p => p.name.replace(/'/g, '') === name);
+    if (idx > -1) { applyRestock(idx); return; }
+    state.history.unshift({ text: `อนุมัติ AI ปรับยอดสั่งซื้อ ${name}`, date: new Date().toLocaleString('th-TH') });
+    alert('ระบบได้ปรับยอดแผนการสั่งซื้อ (PO) ในรอบถัดไปอัตโนมัติ');
+}
+
+// ---- ตัวกรองคลังสินค้า ----
+window.setInvFilter = function(status) {
+    state.invFilter = status;
+    document.querySelectorAll('#inv-filter-chips .filter-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === status));
+    renderInventory();
+}
+
+// จากหน้าหลัก: กดการ์ดสี -> ไปคลังสินค้า กรองตามสี เรียงใกล้หมดอายุก่อน
+window.goToInventoryFilter = function(status) {
+    state.invFilter = status;
+    const sortSel = document.getElementById('inv-sort');
+    if (sortSel) sortSel.value = 'expiry-asc';
+    switchView('inventory');
+    document.querySelectorAll('#inv-filter-chips .filter-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === status));
+    renderInventory();
+}
+
 // Flat Table Design for Inventory
-function renderInventory(searchQuery = '') {
+function renderInventory(searchQuery) {
     const list = document.getElementById('inventory-list');
+    if (!list) return;
     list.innerHTML = '';
-    
+
+    // keep the search box value if not explicitly passed
+    if (searchQuery === undefined) {
+        const sb = document.getElementById('inventory-search');
+        searchQuery = sb ? sb.value : '';
+    }
     const lowerQuery = searchQuery.toLowerCase();
-    
-    // Sort inventory by Slot, then Name
-    const sortedInventory = [...state.inventory].sort((a, b) => {
-        if(a.slot !== b.slot) return a.slot.localeCompare(b.slot);
-        return a.name.localeCompare(b.name);
+    const statusFilter = state.invFilter || 'all';
+    const sortMode = (document.getElementById('inv-sort') || {}).value || 'expiry-asc';
+
+    let items = [...state.inventory];
+
+    // sort
+    items.sort((a, b) => {
+        if (sortMode === 'name') return a.name.localeCompare(b.name);
+        const diff = new Date(a.expiry) - new Date(b.expiry);
+        return sortMode === 'expiry-desc' ? -diff : diff;
     });
 
-    const filtered = sortedInventory.filter(item => {
-        return item.name.toLowerCase().includes(lowerQuery) || 
+    const filtered = items.filter(item => {
+        if (statusFilter !== 'all' && item.status !== statusFilter) return false;
+        return item.name.toLowerCase().includes(lowerQuery) ||
                item.lot.toLowerCase().includes(lowerQuery) ||
                (item.slot && item.slot.toLowerCase().includes(lowerQuery)) ||
                (item.source && item.source.toLowerCase().includes(lowerQuery));
     });
+
+    if (filtered.length === 0) {
+        list.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:28px; color:var(--text-muted);">ไม่พบสินค้าตามเงื่อนไขที่เลือก</td></tr>';
+        return;
+    }
 
     filtered.forEach(item => {
         let statusText = item.status === 'green' ? 'ปลอดภัย' : item.status === 'yellow' ? 'เสี่ยง' : 'วิกฤต';
@@ -647,15 +774,15 @@ let editingItemId = null;
 
 function computeStatus(expiry) {
     const diffDays = Math.ceil((new Date(expiry) - new Date()) / (1000 * 60 * 60 * 24));
-    if (diffDays <= 7) return 'red';     // หมดอายุ หรือ ≤ 7 วัน
-    if (diffDays <= 30) return 'yellow'; // 8–30 วัน
-    return 'green';                      // > 30 วัน
+    if (diffDays <= 7) return 'red';     // วิกฤต: หมดอายุ หรือ ≤ 7 วัน
+    if (diffDays <= 15) return 'yellow'; // เสี่ยง: 8–15 วัน
+    return 'green';                      // ปลอดภัย: > 15 วัน
 }
 
 // ตั้งวันหมดอายุของข้อมูลตัวอย่างให้สัมพันธ์กับ "วันนี้" เสมอ (เดโมจะมีทั้งแดง/เหลือง/เขียวพอดี)
 // แล้วคำนวณสถานะใหม่ตามเกณฑ์ปัจจุบันให้สินค้าทุกชิ้น
 function refreshInventoryStatuses() {
-    const seedOffsets = { 1: 3, 2: 56, 3: 5, 4: 20, 5: 194 }; // วัน (จากวันนี้)
+    const seedOffsets = { 1: 3, 2: 40, 3: 5, 4: 12, 5: 194 }; // วัน (จากวันนี้)
     state.inventory.forEach(i => {
         if (seedOffsets[i.id] !== undefined) {
             const d = new Date();
@@ -954,10 +1081,10 @@ function getAssistantReply(rawText) {
     const askSource = /(มาจากไหน|แหล่งที่มา|ซื้อมาจาก|รับมาจาก|ซัพพลายเออร์|ผู้ขายส่ง|มาจากที่ไหน)/.test(text);
     const askAnalysis = /(วิเคราะห์|analysis|มูลค่าความเสี่ยง|ขาดทุน|เทรนด์|trend|รายงาน|report|insight|ข้อมูลเชิงลึก)/i.test(text);
 
-    // 0.0) คำถามเชิงวิเคราะห์ — ฟีเจอร์ของ Business Plan
+    // 0.0) คำถามเชิงวิเคราะห์ — ฟีเจอร์ของ Pro ขึ้นไป
     if (askAnalysis) {
-        if (!isBusiness()) {
-            return `ฟีเจอร์นี้เป็นของ **Business Plan** (฿${BUSINESS_PRICE.toLocaleString()}/เดือน) ครับ\nปลดล็อก AI วิเคราะห์ข้อมูลเชิงลึก (waste rate, ความเสี่ยงตามซัพพลายเออร์ ฯลฯ)\n\nกดปุ่ม "อัปเกรด" มุมขวาบนเพื่อเปิดใช้งานได้เลย`;
+        if (!isPro()) {
+            return `ฟีเจอร์ AI Agent วิเคราะห์เชิงลึกเป็นของ **Pro** (฿99/เดือน · ทดลองฟรี 7 เดือน) ครับ\nปลดล็อก waste rate, ความเสี่ยงตามซัพพลายเออร์ และการคำนวณที่ละเอียดขึ้น\n\nกดปุ่ม "อัปเกรด" มุมขวาบนเพื่อเริ่มทดลองใช้ได้เลย`;
         }
         return businessInsightReply();
     }
@@ -1084,17 +1211,18 @@ function businessInsightReply() {
     return msg;
 }
 
-// ===================== แพ็กเกจ / BUSINESS PLAN =====================
+// ===================== แพ็กเกจ =====================
+function planLabel() {
+    return state.plan === 'business' ? 'Business' : state.plan === 'pro' ? 'Pro' : 'Free';
+}
 function updatePlanBadge() {
     const badge = document.getElementById('plan-badge');
     const upgradeBtn = document.getElementById('header-upgrade-btn');
     if (badge) {
-        badge.textContent = isBusiness() ? 'Business' : 'Free';
-        badge.className = 'plan-badge ' + (isBusiness() ? 'plan-business' : 'plan-free');
+        badge.textContent = planLabel();
+        badge.className = 'plan-badge ' + (state.plan === 'free' ? 'plan-free' : 'plan-business');
     }
-    if (upgradeBtn) upgradeBtn.style.display = isBusiness() ? 'none' : '';
-    // อัปเดตป้ายราคาในหน้าต่างแพ็กเกจ
-    document.querySelectorAll('.js-price').forEach(el => { el.textContent = BUSINESS_PRICE.toLocaleString(); });
+    if (upgradeBtn) upgradeBtn.style.display = state.plan === 'free' ? '' : 'none';
 }
 
 window.openPlans = function() {
@@ -1112,16 +1240,22 @@ function initPlans() {
     });
 }
 
+window.upgradeToPro = function() {
+    savePlan('pro');
+    updatePlanBadge();
+    closePlans();
+    alert('เริ่มทดลองใช้ Pro ฟรี 7 เดือน! ปลดล็อกสแกนไม่จำกัด + AI Agent วิเคราะห์เชิงลึกแล้ว 🎉');
+}
+
 window.upgradeToBusiness = function() {
     savePlan('business');
     updatePlanBadge();
     closePlans();
-    renderDashboard();
-    alert('อัปเกรดเป็น Business Plan สำเร็จ! ปลดล็อก AI วิเคราะห์ข้อมูลเชิงลึกแล้ว 🎉');
+    alert('อัปเกรดเป็น Entrepreneur (Business) สำเร็จ! ปลดล็อกทุกฟีเจอร์ + เชื่อมต่อเครื่องสแกน HandHeld แล้ว 🎉');
 }
 
 window.downgradeToFree = function() {
-    if (!confirm('ต้องการกลับไปใช้แพ็กเกจ Free ใช่ไหม? (ฟีเจอร์ AI วิเคราะห์ข้อมูลจะถูกล็อก)')) return;
+    if (!confirm('ต้องการกลับไปใช้แพ็กเกจ Free ใช่ไหม? (สแกนจะจำกัด 20 ครั้ง/12 ชม. และล็อกฟีเจอร์ Pro)')) return;
     savePlan('free');
     updatePlanBadge();
     alert('กลับมาใช้แพ็กเกจ Free แล้ว');
@@ -1493,6 +1627,7 @@ function initScannerLogic() {
             date: new Date().toLocaleString('th-TH')
         });
 
+        recordScan(); // นับโควตาการสแกน (Free: 20/12ชม.)
         alert(`นำ ${name} เข้าล็อต ${lot} เรียบร้อยแล้ว!`);
         saveForm.reset();
         preview.innerHTML = '';
